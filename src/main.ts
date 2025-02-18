@@ -32,8 +32,8 @@ const startPos = new T.Vector3(-width / 2, -1, -width / 2);
 const map = generateMap(rows, columns, tileSize, startPos);
 map.addToScene(scene);
 
-const grid = new T.GridHelper(width * 2, width / 2, 0xff00ff, 0xaa00aa);
-scene.add(grid);
+//const grid = new T.GridHelper(width * 2, width / 2, 0xff00ff, 0xaa00aa);
+//scene.add(grid);
 
 console.log(map);
 
