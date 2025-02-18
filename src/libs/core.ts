@@ -1,9 +1,12 @@
-function randNum(min: number, max: number): number {
-    const factor = 100;
-    let temp = (Math.random() % (max + 1 - min)) * factor + min * factor;
-    return temp / factor;
+export function randNum(min: number, max: number): number {
+    const temp = Math.random() * (max - min) + min;
+    return temp;
 }
 
-export default {
-    randNum,
-};
+export function randInt(min: number, max: number): number {
+    let base = randNum(min, max + 1);
+    base = Math.floor(base);
+    return base;
+}
+
+export const msToS = (ms: number) => ms / 1000;

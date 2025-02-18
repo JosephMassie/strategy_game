@@ -1,54 +1,55 @@
 import './style.css';
 
-import * as THREE from 'three';
+import * as T from 'three';
 
-import GameEngine from './game_engine';
+import GameEngine from './libs/game_engine';
+import { generateMap } from './map';
 
 const canvas = document.querySelector(
     'canvas#background'
 )! as HTMLCanvasElement;
-const engine = new GameEngine(canvas, true);
+const engine = new GameEngine(canvas, {
+    autoResize: true,
+    debug: false,
+    displayFps: true,
+});
 
 const scene = engine.createScene();
 
-const geometry = new THREE.TorusGeometry(10, 3, 16, 100);
-const material = new THREE.MeshStandardMaterial({
-    color: 0x6af5d9,
-});
-const torus = new THREE.Mesh(geometry, material);
-
-const ambientLight = new THREE.AmbientLight(0xffffff);
-
+const ambientLight = new T.AmbientLight(0xffffff);
 scene.add(ambientLight);
-scene.add(torus);
-
-function addStar(s: THREE.Scene) {
-    const geo = new THREE.SphereGeometry(0.25, 24, 24);
-    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const star = new THREE.Mesh(geo, mat);
-
-    const [x, y, z] = Array(3)
-        .fill(null)
-        .map(() => THREE.MathUtils.randFloatSpread(100));
-    star.position.set(x, y, z);
-    s.add(star);
-}
-
-Array(200)
-    .fill(null)
-    .map(() => addStar(scene));
 
 engine.enableOrbitCtrls();
 
-function animate() {
-    requestAnimationFrame(animate);
+const rows = 200;
+const columns = rows;
+const tileSize = 1;
 
-    torus.rotation.x += 0.01;
-    torus.rotation.y += 0.01;
-    torus.rotation.z += 0.01;
+const width = rows * tileSize;
 
-    engine.update();
+const startPos = new T.Vector3(-width / 2, -1, -width / 2);
+
+const map = generateMap(rows, columns, tileSize, startPos);
+map.addToScene(scene);
+
+const grid = new T.GridHelper(width * 2, width / 2, 0xff00ff, 0xaa00aa);
+scene.add(grid);
+
+console.log(map);
+
+let isRunning = true;
+let lastTimeStamp = Date.now();
+function gameLoop() {
+    if (!isRunning) return;
+
+    const now = Date.now();
+    const deltaTime = now - lastTimeStamp;
+    lastTimeStamp = now;
+
+    requestAnimationFrame(gameLoop);
+
+    engine.update(deltaTime);
     engine.render(scene);
 }
 
-animate();
+setTimeout(gameLoop, 10);

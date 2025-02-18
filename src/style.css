@@ -18,3 +18,17 @@ canvas#background {
     top: 0;
     left: 0;
 }
+
+.fps-counter {
+    z-index: 10;
+    position: fixed;
+
+    top: 0;
+    right: 0;
+
+    border-radius: 100;
+    padding: 0.25em;
+    background: hsla(0, 100, 0, 0.5);
+    color: hsl(0, 100, 100);
+    font-weight: bold;
+}
