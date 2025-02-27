@@ -314,7 +314,7 @@ function terraForm(
             fillInTerrain(map, newTerrain, Terrain.MOUNTAIN);
             break;
         case Terrain.SAND:
-            fillInTerrain(map, newTerrain, Terrain.SAND, 6);
+            fillInTerrain(map, newTerrain, Terrain.SAND);
             break;
         case Terrain.WATER:
             fillWater(map, newTerrain);
@@ -377,10 +377,10 @@ export function generateMap(
     terraForm(map, Terrain.WATER, { percentCoverage: 0.3 });
 
     console.log(`raising mountains`);
-    terraForm(map, Terrain.MOUNTAIN);
+    terraForm(map, Terrain.MOUNTAIN, { percentCoverage: 0.25 });
 
     console.log(`laying down sand`);
-    terraForm(map, Terrain.SAND, { percentCoverage: 0.1 });
+    terraForm(map, Terrain.SAND, { percentCoverage: 0.05 });
 
     return map;
 }

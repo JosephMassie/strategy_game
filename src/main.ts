@@ -21,7 +21,7 @@ scene.add(ambientLight);
 
 engine.enableOrbitCtrls();
 
-const rows = 200;
+const rows = 100;
 const columns = rows;
 const tileSize = 1;
 
