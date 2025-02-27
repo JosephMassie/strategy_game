@@ -31,25 +31,26 @@ const startPos = new T.Vector3(-width / 2, -1, -width / 2);
 
 const map = generateMap(rows, columns, tileSize, startPos);
 map.addToScene(scene);
+engine.setCurScene(scene);
 
+// debug grid to help visual world positions
 //const grid = new T.GridHelper(width * 2, width / 2, 0xff00ff, 0xaa00aa);
 //scene.add(grid);
 
-console.log(map);
-
 let isRunning = true;
-let lastTimeStamp = Date.now();
-function gameLoop() {
+let lastTimeStamp = -1;
+function gameLoop(now: number) {
     if (!isRunning) return;
 
-    const now = Date.now();
+    if (lastTimeStamp === -1) lastTimeStamp = now;
+
     const deltaTime = now - lastTimeStamp;
     lastTimeStamp = now;
 
     requestAnimationFrame(gameLoop);
 
     engine.update(deltaTime);
-    engine.render(scene);
+    engine.render();
 }
 
-setTimeout(gameLoop, 10);
+setTimeout(() => gameLoop(lastTimeStamp), 10);

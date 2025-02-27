@@ -22,6 +22,7 @@ export type Map = {
     tiles: Tile[][];
     tileSize: number;
     addToScene(scene: T.Scene): void;
+    update(): void;
     getTile(coords: MapCoords): Tile;
 };
 
@@ -345,6 +346,9 @@ export function generateMap(
                     scene.add(tile.mesh);
                 });
             });
+        },
+        update() {
+
         },
     };
 

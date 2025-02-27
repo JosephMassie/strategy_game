@@ -16,6 +16,7 @@ export default class GameEngine {
 
     #renderer: T.WebGLRenderer;
     #camera: T.PerspectiveCamera;
+    #activeScene: T.Scene | null = null;
     #orbitCtrls: OrbitControls | null = null;
 
     #winWidth: number;
@@ -29,11 +30,38 @@ export default class GameEngine {
     #frameCount = 0;
     #elapsedTime = 0;
     #fpsCounterElem: HTMLElement | null = null;
+    #mousePos = new T.Vector2(-Infinity, -Infinity);
 
+    // Internal only utility methods
     #calcFps(dT: number) {
         this.#frameCount++;
         this.#elapsedTime += dT;
         this.#fps = this.#frameCount / msToS(this.#elapsedTime);
+    }
+
+    /* convert screen X,Y coords to world X,Y coords
+     * primarily used with mouse position for raycasting
+     * and UI interactions, toNormalize should be set to true
+     * when raycasting to work properly with ThreeJS raycasting
+     * from camera methods
+     */
+    #screenToWorld(
+        screnePos: T.Vector2,
+        toNormalize?: boolean = false
+    ): T.Vector2 {
+        const canvas = this.#renderer.domElement;
+        const rect = canvas.getBoundingClientRect();
+        const worldPos = new T.Vector2(
+            ((screnePos.x - rect.left) * canvas.width) / rect.width,
+            ((screnePos.y - rect.top) * canvas.height) / rect.height
+        );
+
+        if (toNormalize) {
+            worldPos.x = (worldPos.x / canvas.width) * 2 - 1;
+            worldPos.y = (worldPos.y / canvas.height) * -2 + 1;
+        }
+
+        return worldPos;
     }
 
     constructor(canvas: HTMLCanvasElement, options?: GameEngineOptions) {
@@ -104,17 +132,30 @@ export default class GameEngine {
             canvas.after(count);
             this.#fpsCounterElem = count;
         }
+
+        window.addEventListener('mousemove', (event) => {
+            const mouseScreenPos = new T.Vector2(event.clientX, event.clientY);
+            this.#mousePos = this.#screenToWorld(mouseScreenPos, true);
+        });
     }
 
+    // Scene Control Methods
     createScene() {
         return new T.Scene();
     }
+    setCurScene(s: T.Scene) {
+        this.#activeScene = s;
+    }
+
+    // Camera Control Methods
     moveCamera(vec: T.Vector3) {
         this.#camera.position.add(vec);
     }
     cameraLookAt(vec: T.Vector3) {
         this.#camera.lookAt(vec);
     }
+
+    // Input Control Methods
     enableOrbitCtrls() {
         this.#orbitCtrls = new OrbitControls(
             this.#camera,
@@ -133,12 +174,36 @@ export default class GameEngine {
         if (this.#orbitCtrls) {
             this.#orbitCtrls.update();
         }
+
+        if (this.#activeScene !== null) {
+            const caster = new T.Raycaster();
+            caster.setFromCamera(this.#mousePos, this.#camera);
+
+            const intersectedObjects = caster.intersectObjects(
+                this.#activeScene.children
+            );
+            if (intersectedObjects.length > 0) {
+                const obj = intersectedObjects[0].object;
+                obj.material = new T.MeshStandardMaterial({ color: 0xff00ff });
+            }
+        }
     }
-    render(scene: T.Scene) {
-        this.#renderer.render(scene, this.#camera);
+    render(scene?: T.Scene) {
+        const curScene = scene ?? this.#activeScene;
+
+        if (curScene === null) {
+            console.error(`no scene provided or active scene set to render`);
+            return;
+        }
+
+        this.#renderer.render(curScene, this.#camera);
 
         if (this.#displayFps && this.#fpsCounterElem !== null) {
-            this.#fpsCounterElem.textContent = `fps: ${this.#fps.toFixed(2)}`;
+            this.#fpsCounterElem.textContent = `fps: ${this.#fps.toFixed(
+                2
+            )}\nmp: ${this.#mousePos.x.toFixed(3)}, ${this.#mousePos.y.toFixed(
+                3
+            )}`;
         }
     }
 }
