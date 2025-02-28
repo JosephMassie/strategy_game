@@ -32,38 +32,6 @@ export default class GameEngine {
     #fpsCounterElem: HTMLElement | null = null;
     #mousePos = new T.Vector2(-Infinity, -Infinity);
 
-    // Internal only utility methods
-    #calcFps(dT: number) {
-        this.#frameCount++;
-        this.#elapsedTime += dT;
-        this.#fps = this.#frameCount / msToS(this.#elapsedTime);
-    }
-
-    /* convert screen X,Y coords to world X,Y coords
-     * primarily used with mouse position for raycasting
-     * and UI interactions, toNormalize should be set to true
-     * when raycasting to work properly with ThreeJS raycasting
-     * from camera methods
-     */
-    #screenToWorld(
-        screnePos: T.Vector2,
-        toNormalize?: boolean = false
-    ): T.Vector2 {
-        const canvas = this.#renderer.domElement;
-        const rect = canvas.getBoundingClientRect();
-        const worldPos = new T.Vector2(
-            ((screnePos.x - rect.left) * canvas.width) / rect.width,
-            ((screnePos.y - rect.top) * canvas.height) / rect.height
-        );
-
-        if (toNormalize) {
-            worldPos.x = (worldPos.x / canvas.width) * 2 - 1;
-            worldPos.y = (worldPos.y / canvas.height) * -2 + 1;
-        }
-
-        return worldPos;
-    }
-
     constructor(canvas: HTMLCanvasElement, options?: GameEngineOptions) {
         const {
             autoResize = false,
@@ -139,12 +107,47 @@ export default class GameEngine {
         });
     }
 
+    // Internal only utility methods
+    #calcFps(dT: number) {
+        this.#frameCount++;
+        this.#elapsedTime += dT;
+        this.#fps = this.#frameCount / msToS(this.#elapsedTime);
+    }
+
+    /* convert screen X,Y coords to world X,Y coords
+     * primarily used with mouse position for raycasting
+     * and UI interactions, toNormalize should be set to true
+     * when raycasting to work properly with ThreeJS raycasting
+     * from camera methods
+     */
+    #screenToWorld(
+        screnePos: T.Vector2,
+        toNormalize: boolean = false
+    ): T.Vector2 {
+        const canvas = this.#renderer.domElement;
+        const rect = canvas.getBoundingClientRect();
+        const worldPos = new T.Vector2(
+            ((screnePos.x - rect.left) * canvas.width) / rect.width,
+            ((screnePos.y - rect.top) * canvas.height) / rect.height
+        );
+
+        if (toNormalize) {
+            worldPos.x = (worldPos.x / canvas.width) * 2 - 1;
+            worldPos.y = (worldPos.y / canvas.height) * -2 + 1;
+        }
+
+        return worldPos;
+    }
+
     // Scene Control Methods
-    createScene() {
+    createScene(): T.Scene {
         return new T.Scene();
     }
-    setCurScene(s: T.Scene) {
+    setActiveScene(s: T.Scene) {
         this.#activeScene = s;
+    }
+    getActiveScene(): T.Scene | null {
+        return this.#activeScene;
     }
 
     // Camera Control Methods
@@ -162,30 +165,25 @@ export default class GameEngine {
             this.#renderer.domElement
         );
     }
+    getRaycaster(source: T.Vector2): T.Raycaster {
+        const caster = new T.Raycaster();
+        caster.setFromCamera(source, this.#camera);
+        return caster;
+    }
+    getMouseRaycaster(): T.Raycaster {
+        return this.getRaycaster(this.#mousePos);
+    }
 
     update(dT: number = 0) {
         this.#calcFps(dT);
 
         if (this.#debug)
             console.log(
-                `dT -> ${msToS(dT).toFixed(2)}ms fps -> ${this.#fps.toFixed(2)}`
+                `dT -> ${msToS(dT).toFixed(2)}s fps -> ${this.#fps.toFixed(2)}`
             );
 
         if (this.#orbitCtrls) {
             this.#orbitCtrls.update();
-        }
-
-        if (this.#activeScene !== null) {
-            const caster = new T.Raycaster();
-            caster.setFromCamera(this.#mousePos, this.#camera);
-
-            const intersectedObjects = caster.intersectObjects(
-                this.#activeScene.children
-            );
-            if (intersectedObjects.length > 0) {
-                const obj = intersectedObjects[0].object;
-                obj.material = new T.MeshStandardMaterial({ color: 0xff00ff });
-            }
         }
     }
     render(scene?: T.Scene) {
