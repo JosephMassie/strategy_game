@@ -2,6 +2,7 @@ import * as T from 'three';
 
 import { randInt } from './libs/core';
 import GameEngine from './libs/game_engine';
+import { OutlinePass } from 'three/examples/jsm/Addons.js';
 
 type MapCoords = [x: number, y: number];
 
@@ -48,12 +49,12 @@ const mtnMat = new T.MeshStandardMaterial({
 
 export default class LvlMap {
     #engine: GameEngine;
+    #outlineShader: OutlinePass;
+
     #width: number;
     #height: number;
     #tileSize: number;
     #tiles: Tile[][];
-
-    //#selectedTileOldMat: T.Material | T.Material[] | null = null;
 
     constructor(
         engine: GameEngine,
@@ -67,6 +68,17 @@ export default class LvlMap {
         console.log(`generating ${width}x${height} map`);
 
         this.#engine = engine;
+        this.#outlineShader = engine.createOutlineShader()!;
+        this.#outlineShader.edgeGlow = 1;
+        this.#outlineShader.edgeStrength = 8;
+        this.#outlineShader.edgeThickness = 8;
+        this.#outlineShader.pulsePeriod = 3;
+        this.#outlineShader.visibleEdgeColor = new T.Color(
+            'hsl(295, 98.30%, 52.90%)'
+        );
+        this.#outlineShader.visibleEdgeColor = new T.Color(
+            'hsl(295, 98.30%, 52.90%)'
+        );
 
         this.#width = width;
         this.#height = height;
@@ -110,7 +122,8 @@ export default class LvlMap {
 
     // internal only helpers
     #makeBaseTile(): T.BoxGeometry {
-        return new T.BoxGeometry(this.#tileSize, 0.5, this.#tileSize);
+        const box = new T.BoxGeometry(this.#tileSize, 0.1, this.#tileSize);
+        return box;
     }
 
     // All base tile manipulation methods
@@ -405,11 +418,7 @@ export default class LvlMap {
         const hovered = caster.intersectObjects(meshes);
 
         if (hovered.length > 0) {
-            const obj = hovered[0].object as T.Mesh;
-
-            obj.material = new T.MeshStandardMaterial({
-                color: new T.Color(`hsl(298, 96.10%, 69.60%)`),
-            });
+            this.#outlineShader.selectedObjects = [hovered[0].object];
         }
     }
 }

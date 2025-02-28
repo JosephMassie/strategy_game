@@ -50,7 +50,7 @@ function gameLoop(now: number) {
     engine.update(deltaTime);
     map.update();
 
-    engine.render();
+    engine.render(deltaTime);
 
     requestAnimationFrame(gameLoop);
 }

@@ -1,4 +1,10 @@
 import * as T from 'three';
+import {
+    EffectComposer,
+    OutlinePass,
+    OutputPass,
+    RenderPass,
+} from 'three/examples/jsm/Addons.js';
 
 import WebGL from 'three/addons/capabilities/WebGL.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -15,8 +21,12 @@ export default class GameEngine {
     #debug = false;
 
     #renderer: T.WebGLRenderer;
+    #composer: EffectComposer;
+    #mainRenderPass: RenderPass | null = null;
+    #outputPass: OutputPass;
     #camera: T.PerspectiveCamera;
     #activeScene: T.Scene | null = null;
+
     #orbitCtrls: OrbitControls | null = null;
 
     #winWidth: number;
@@ -53,16 +63,19 @@ export default class GameEngine {
         this.#winHeight = window.innerHeight;
 
         this.#renderer = new T.WebGLRenderer({ canvas });
+        this.#renderer.setPixelRatio(window.devicePixelRatio);
+        this.#renderer.setSize(this.#winWidth, this.#winHeight);
+
+        this.#composer = new EffectComposer(this.#renderer);
+        this.#outputPass = new OutputPass();
+        this.#composer.addPass(this.#outputPass);
+
         this.#camera = new T.PerspectiveCamera(
             75,
             this.#winWidth / this.#winHeight,
             0.1,
             1000
         );
-
-        this.#renderer.setPixelRatio(window.devicePixelRatio);
-        this.#renderer.setSize(this.#winWidth, this.#winHeight);
-        //this.#camera.position.setZ(10);
         this.#camera.position.setY(140);
 
         this.#autoResize = autoResize;
@@ -83,6 +96,8 @@ export default class GameEngine {
                         this.#winWidth = window.innerWidth;
                         this.#winHeight = window.innerHeight;
                         this.#renderer.setSize(this.#winWidth, this.#winHeight);
+
+                        this.#composer.setSize(this.#winWidth, this.#winHeight);
 
                         // update camera aspect ratio
                         this.#camera.aspect = this.#winWidth / this.#winHeight;
@@ -145,9 +160,35 @@ export default class GameEngine {
     }
     setActiveScene(s: T.Scene) {
         this.#activeScene = s;
+
+        if (this.#mainRenderPass !== null) {
+            this.#composer.removePass(this.#mainRenderPass);
+        }
+
+        this.#mainRenderPass = new RenderPass(this.#activeScene, this.#camera);
+        this.#composer.insertPass(this.#mainRenderPass, 0);
     }
     getActiveScene(): T.Scene | null {
         return this.#activeScene;
+    }
+
+    createOutlineShader(scene?: T.Scene): OutlinePass | undefined {
+        const targetScene = scene ?? this.#activeScene;
+        if (targetScene === null) {
+            console.error(
+                `could not create outline shader, invalid scene or not active scene`
+            );
+            return;
+        }
+
+        const outline = new OutlinePass(
+            new T.Vector2(this.#winWidth, this.#winHeight),
+            targetScene,
+            this.#camera
+        );
+        this.#composer.addPass(outline);
+
+        return outline;
     }
 
     // Camera Control Methods
@@ -186,7 +227,7 @@ export default class GameEngine {
             this.#orbitCtrls.update();
         }
     }
-    render(scene?: T.Scene) {
+    render(dT: number, scene?: T.Scene) {
         const curScene = scene ?? this.#activeScene;
 
         if (curScene === null) {
@@ -194,7 +235,11 @@ export default class GameEngine {
             return;
         }
 
-        this.#renderer.render(curScene, this.#camera);
+        if (this.#composer && this.#composer.passes.length > 2) {
+            this.#composer.render(dT);
+        } else {
+            this.#renderer.render(curScene, this.#camera);
+        }
 
         if (this.#displayFps && this.#fpsCounterElem !== null) {
             this.#fpsCounterElem.textContent = `fps: ${this.#fps.toFixed(
