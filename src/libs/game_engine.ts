@@ -10,6 +10,7 @@ import WebGL from 'three/addons/capabilities/WebGL.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { msToS } from './core';
+import { InputHanlder } from './input';
 
 export type GameEngineOptions = {
     autoResize: boolean;
@@ -22,6 +23,7 @@ export default class GameEngine {
 
     #renderer: T.WebGLRenderer;
     #composer: EffectComposer;
+    #inputHandler: InputHanlder;
     #mainRenderPass: RenderPass | null = null;
     #outputPass: OutputPass;
     #camera: T.PerspectiveCamera;
@@ -42,7 +44,11 @@ export default class GameEngine {
     #fpsCounterElem: HTMLElement | null = null;
     #mousePos = new T.Vector2(-Infinity, -Infinity);
 
-    constructor(canvas: HTMLCanvasElement, options?: GameEngineOptions) {
+    constructor(
+        canvas: HTMLCanvasElement,
+        inputHandler: InputHanlder,
+        options?: GameEngineOptions
+    ) {
         const {
             autoResize = false,
             displayFps = false,
@@ -50,6 +56,8 @@ export default class GameEngine {
         } = options ?? {};
 
         this.#debug = debug;
+
+        this.#inputHandler = inputHandler;
 
         if (!WebGL.isWebGL2Available()) {
             const warning = WebGL.getWebGL2ErrorMessage();
@@ -158,6 +166,10 @@ export default class GameEngine {
     createScene(): T.Scene {
         return new T.Scene();
     }
+    /* Set the current active scene to render by
+     * default when no scene is passed to the
+     * render method
+     */
     setActiveScene(s: T.Scene) {
         this.#activeScene = s;
 
@@ -172,6 +184,9 @@ export default class GameEngine {
         return this.#activeScene;
     }
 
+    /* Create a new shader to outline selected elements in either the
+     * provided scene or the current active scene
+     */
     createOutlineShader(scene?: T.Scene): OutlinePass | undefined {
         const targetScene = scene ?? this.#activeScene;
         if (targetScene === null) {
@@ -194,6 +209,9 @@ export default class GameEngine {
     // Camera Control Methods
     moveCamera(vec: T.Vector3) {
         this.#camera.position.add(vec);
+    }
+    rotateCamera(axis: T.Vector3, radians: number) {
+        this.#camera.rotateOnAxis(axis, radians);
     }
     cameraLookAt(vec: T.Vector3) {
         this.#camera.lookAt(vec);
@@ -225,8 +243,53 @@ export default class GameEngine {
 
         if (this.#orbitCtrls) {
             this.#orbitCtrls.update();
+        } else {
+            const cameraSpeed = 0.1;
+            let cameraVelocity = new T.Vector3(0, 0);
+            if (this.#inputHandler.isKeyDown('w')) {
+                cameraVelocity.add(new T.Vector3(-cameraSpeed, 0, 0));
+            }
+
+            if (this.#inputHandler.isKeyDown('s')) {
+                cameraVelocity.add(new T.Vector3(cameraSpeed, 0, 0));
+            }
+
+            if (this.#inputHandler.isKeyDown('a')) {
+                cameraVelocity.add(new T.Vector3(0, 0, cameraSpeed));
+            }
+
+            if (this.#inputHandler.isKeyDown('d')) {
+                cameraVelocity.add(new T.Vector3(0, 0, -cameraSpeed));
+            }
+
+            if (this.#inputHandler.isKeyDown('ArrowUp')) {
+                cameraVelocity.add(new T.Vector3(0, -cameraSpeed, 0));
+            }
+
+            if (this.#inputHandler.isKeyDown('ArrowDown')) {
+                cameraVelocity.add(new T.Vector3(0, cameraSpeed, 0));
+            }
+            cameraVelocity.multiplyScalar(dT);
+            this.moveCamera(cameraVelocity);
+
+            const cameraRotateSpd = 0.001;
+            let cameraRotation = 0;
+            if (this.#inputHandler.isKeyDown('ArrowLeft')) {
+                cameraRotation += cameraRotateSpd;
+            }
+
+            if (this.#inputHandler.isKeyDown('ArrowRight')) {
+                cameraRotation -= cameraRotateSpd;
+            }
+            this.rotateCamera(new T.Vector3(0, 0, 1), cameraRotation * dT);
+        }
+
+        // clamp camera position to prevent going below the ground plane
+        if (this.#camera.position.y < 5) {
+            this.#camera.position.y = 5;
         }
     }
+    /* Render either the current active scene or provided scene */
     render(dT: number, scene?: T.Scene) {
         const curScene = scene ?? this.#activeScene;
 
@@ -244,9 +307,11 @@ export default class GameEngine {
         if (this.#displayFps && this.#fpsCounterElem !== null) {
             this.#fpsCounterElem.textContent = `fps: ${this.#fps.toFixed(
                 2
-            )}\nmp: ${this.#mousePos.x.toFixed(3)}, ${this.#mousePos.y.toFixed(
+            )}\nmp: [${this.#mousePos.x.toFixed(3)}, ${this.#mousePos.y.toFixed(
                 3
-            )}`;
+            )}]\ncp: [${this.#camera.position.x}, ${this.#camera.position.y}, ${
+                this.#camera.position.z
+            }]`;
         }
     }
 }

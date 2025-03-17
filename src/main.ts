@@ -4,11 +4,15 @@ import * as T from 'three';
 
 import GameEngine from './libs/game_engine';
 import LvlMap from './map';
+import { input } from './libs/input';
 
 const canvas = document.querySelector(
     'canvas#background'
 )! as HTMLCanvasElement;
-const engine = new GameEngine(canvas, {
+
+input.initialize(canvas);
+
+const engine = new GameEngine(canvas, input, {
     autoResize: true,
     debug: false,
     displayFps: true,
@@ -20,7 +24,7 @@ engine.setActiveScene(scene);
 const ambientLight = new T.AmbientLight(0xffffff);
 scene.add(ambientLight);
 
-engine.enableOrbitCtrls();
+//engine.enableOrbitCtrls();
 
 const rows = 100;
 const columns = rows;
@@ -29,9 +33,13 @@ const tileSize = 1;
 const width = rows * tileSize;
 
 const startPos = new T.Vector3(-width / 2, -1, -width / 2);
+engine.cameraLookAt(new T.Vector3(0, 0, 0));
+engine.rotateCamera(new T.Vector3(0, 0, 1), 1.57);
 
 const map = new LvlMap(engine, rows, columns, tileSize, startPos);
 map.addToScene();
+
+canvas.focus();
 
 // debug grid to help visual world positions
 //const grid = new T.GridHelper(width * 2, width / 2, 0xff00ff, 0xaa00aa);
