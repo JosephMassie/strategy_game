@@ -114,13 +114,13 @@ export default class LvlMap {
         }
 
         console.log(`raising mountains`);
-        this.#terraForm(Terrain.MOUNTAIN, { percentCoverage: 0.25 });
+        this.#terraForm(Terrain.MOUNTAIN, { percentCoverage: 0.15 });
 
         console.log(`adding in water`);
-        this.#terraForm(Terrain.WATER, { percentCoverage: 0.3 });
+        this.#terraForm(Terrain.WATER, { percentCoverage: 0.2 });
 
         console.log(`laying down sand`);
-        this.#terraForm(Terrain.SAND, { percentCoverage: 0.05 });
+        this.#terraForm(Terrain.SAND, { percentCoverage: 0.1 });
 
         const hoverText = new Text();
         this.#hoverText = hoverText;
@@ -129,7 +129,6 @@ export default class LvlMap {
         hoverText.anchorX = 'left';
         hoverText.anchorY = 'top';
         hoverText.textAlign = 'left';
-        hoverText.textIndent = 40;
         hoverText.position.set(
             -window.innerWidth / 2 + 10,
             window.innerHeight / 2 - 10,
