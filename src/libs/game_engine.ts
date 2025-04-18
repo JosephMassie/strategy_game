@@ -12,7 +12,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { msToS } from './core';
 import { InputHandler } from './input';
 
-export type GameEngineOptions = {
+type GameEngineOptions = {
     autoResize: boolean;
     displayFps: boolean;
     debug: boolean;

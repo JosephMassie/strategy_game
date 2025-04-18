@@ -27,8 +27,6 @@ engine.setActiveHudScene(hudScene);
 const ambientLight = new T.AmbientLight(0xffffff);
 scene.add(ambientLight);
 
-//engine.enableOrbitCtrls();
-
 const rows = 100;
 const columns = rows;
 const tileSize = 1;
