@@ -129,7 +129,7 @@ export default class LvlMap {
         hoverText.anchorX = 'left';
         hoverText.anchorY = 'top';
         hoverText.textAlign = 'left';
-        hoverText.textIndext = 40;
+        hoverText.textIndent = 40;
         hoverText.position.set(
             -window.innerWidth / 2 + 10,
             window.innerHeight / 2 - 10,
