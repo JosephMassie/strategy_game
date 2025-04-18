@@ -21,6 +21,9 @@ const engine = new GameEngine(canvas, input, {
 const scene = engine.createScene();
 engine.setActiveScene(scene);
 
+const hudScene = engine.createScene();
+engine.setActiveHudScene(hudScene);
+
 const ambientLight = new T.AmbientLight(0xffffff);
 scene.add(ambientLight);
 
@@ -40,10 +43,6 @@ const map = new LvlMap(engine, rows, columns, tileSize, startPos);
 map.addToScene();
 
 canvas.focus();
-
-// debug grid to help visual world positions
-//const grid = new T.GridHelper(width * 2, width / 2, 0xff00ff, 0xaa00aa);
-//scene.add(grid);
 
 let isRunning = true;
 let lastTimeStamp: number = performance.now();

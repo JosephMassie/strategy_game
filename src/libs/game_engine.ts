@@ -27,7 +27,9 @@ export default class GameEngine {
     #mainRenderPass: RenderPass | null = null;
     #outputPass: OutputPass;
     #camera: T.PerspectiveCamera;
+    #hudCamera: T.OrthographicCamera;
     #activeScene: T.Scene | null = null;
+    #activeHud: T.Scene | null = null;
 
     #orbitCtrls: OrbitControls | null = null;
 
@@ -36,11 +38,11 @@ export default class GameEngine {
 
     #autoResize = false;
     #resizeCooldown: number | null = null;
+    #resizeListeners: Array<(width: number, height: number) => void> = [];
 
     #displayFps = false;
     #fps = 0;
-    #frameCount = 0;
-    #elapsedTime = 0;
+    #frameTimeHistory: number[] = [];
     #fpsCounterElem: HTMLElement | null = null;
     #mousePos = new T.Vector2(-Infinity, -Infinity);
 
@@ -50,7 +52,7 @@ export default class GameEngine {
         options?: GameEngineOptions
     ) {
         const {
-            autoResize = false,
+            autoResize = true,
             displayFps = false,
             debug = false,
         } = options ?? {};
@@ -84,7 +86,21 @@ export default class GameEngine {
             0.1,
             1000
         );
-        this.#camera.position.setY(140);
+        this.#camera.position.setY(100);
+        this.#camera.layers.enable(0);
+
+        const halfWinWidth = this.#winWidth / 2;
+        const halfWinHeight = this.#winHeight / 2;
+        this.#hudCamera = new T.OrthographicCamera(
+            -halfWinWidth,
+            halfWinWidth,
+            halfWinHeight,
+            -halfWinHeight,
+            0,
+            10
+        );
+        this.#hudCamera.position.z = 10;
+        this.#hudCamera.layers.set(1);
 
         this.#autoResize = autoResize;
         if (this.#autoResize) {
@@ -110,6 +126,20 @@ export default class GameEngine {
                         // update camera aspect ratio
                         this.#camera.aspect = this.#winWidth / this.#winHeight;
                         this.#camera.updateProjectionMatrix();
+
+                        // update hud camera size
+                        const halfWinWidth = this.#winWidth / 2;
+                        const halfWinHeight = this.#winHeight / 2;
+                        this.#hudCamera.left = -halfWinWidth;
+                        this.#hudCamera.right = halfWinWidth;
+                        this.#hudCamera.top = halfWinHeight;
+                        this.#hudCamera.bottom = -halfWinHeight;
+                        this.#hudCamera.updateProjectionMatrix();
+
+                        // make sure to call all registered listeners
+                        this.#resizeListeners.forEach((callback) => {
+                            callback(this.#winWidth, this.#winHeight);
+                        });
                     }
                 }, 50);
             });
@@ -132,9 +162,14 @@ export default class GameEngine {
 
     // Internal only utility methods
     #calcFps(dT: number) {
-        this.#frameCount++;
-        this.#elapsedTime += dT;
-        this.#fps = this.#frameCount / msToS(this.#elapsedTime);
+        this.#frameTimeHistory.push(Math.round(dT));
+        if (this.#frameTimeHistory.length > 100) {
+            this.#frameTimeHistory.shift();
+        }
+        const avgFrameTime =
+            this.#frameTimeHistory.reduce((a, b) => a + b, 0) /
+            this.#frameTimeHistory.length;
+        this.#fps = 1000 / avgFrameTime;
     }
 
     /* convert screen X,Y coords to world X,Y coords
@@ -162,6 +197,11 @@ export default class GameEngine {
         return worldPos;
     }
 
+    // Register a listener for when the screen is resized
+    whenResized(callback: (width: number, height: number) => void) {
+        this.#resizeListeners.push(callback);
+    }
+
     // Scene Control Methods
     createScene(): T.Scene {
         return new T.Scene();
@@ -182,6 +222,13 @@ export default class GameEngine {
     }
     getActiveScene(): T.Scene | null {
         return this.#activeScene;
+    }
+    // Scene control methods specifically for the HUD
+    setActiveHudScene(s: T.Scene) {
+        this.#activeHud = s;
+    }
+    getActiveHudScene(): T.Scene | null {
+        return this.#activeHud;
     }
 
     /* Create a new shader to outline selected elements in either the
@@ -302,6 +349,13 @@ export default class GameEngine {
             this.#composer.render(dT);
         } else {
             this.#renderer.render(curScene, this.#camera);
+        }
+
+        if (this.#activeHud != null) {
+            this.#renderer.autoClear = false;
+            this.#renderer.clearDepth();
+            this.#renderer.render(this.#activeHud, this.#hudCamera);
+            this.#renderer.autoClear = true;
         }
 
         if (this.#displayFps && this.#fpsCounterElem !== null) {

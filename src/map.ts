@@ -1,8 +1,9 @@
 import * as T from 'three';
+import { Text } from 'troika-three-text';
 
 import { randInt } from './libs/core';
 import GameEngine from './libs/game_engine';
-import { OutlinePass } from 'three/examples/jsm/Addons.js';
+//import { OutlinePass } from 'three/examples/jsm/Addons.js';
 
 type MapCoords = [x: number, y: number];
 
@@ -49,12 +50,14 @@ const mtnMat = new T.MeshStandardMaterial({
 
 export default class LvlMap {
     #engine: GameEngine;
-    #outlineShader: OutlinePass;
+    //#outlineShader: OutlinePass;
 
     #width: number;
     #height: number;
     #tileSize: number;
     #tiles: Tile[][];
+    #hoveredTile: Tile | null = null;
+    #hoverText: Text;
 
     constructor(
         engine: GameEngine,
@@ -68,7 +71,7 @@ export default class LvlMap {
         console.log(`generating ${width}x${height} map`);
 
         this.#engine = engine;
-        this.#outlineShader = engine.createOutlineShader()!;
+        /* this.#outlineShader = engine.createOutlineShader()!;
         this.#outlineShader.edgeGlow = 1;
         this.#outlineShader.edgeStrength = 8;
         this.#outlineShader.edgeThickness = 8;
@@ -78,7 +81,7 @@ export default class LvlMap {
         );
         this.#outlineShader.visibleEdgeColor = new T.Color(
             'hsl(295, 98.30%, 52.90%)'
-        );
+        ); */
 
         this.#width = width;
         this.#height = height;
@@ -110,14 +113,41 @@ export default class LvlMap {
             }
         }
 
-        console.log(`adding in water`);
-        this.#terraForm(Terrain.WATER, { percentCoverage: 0.3 });
-
         console.log(`raising mountains`);
         this.#terraForm(Terrain.MOUNTAIN, { percentCoverage: 0.25 });
 
+        console.log(`adding in water`);
+        this.#terraForm(Terrain.WATER, { percentCoverage: 0.3 });
+
         console.log(`laying down sand`);
         this.#terraForm(Terrain.SAND, { percentCoverage: 0.05 });
+
+        const hoverText = new Text();
+        this.#hoverText = hoverText;
+        hoverText.fontSize = 24;
+        hoverText.color = 0xffffff;
+        hoverText.anchorX = 'left';
+        hoverText.anchorY = 'top';
+        hoverText.textAlign = 'left';
+        hoverText.textIndext = 40;
+        hoverText.position.set(
+            -window.innerWidth / 2 + 10,
+            window.innerHeight / 2 - 10,
+            2
+        );
+        hoverText.layers.set(1);
+        hoverText.scale.set(1, 1, 1);
+        hoverText.text = 'Currently hovering over: ...';
+
+        const hud = engine.getActiveHudScene();
+        if (hud !== null) {
+            hud.add(hoverText);
+            hoverText.sync();
+        }
+        engine.whenResized((width, height) => {
+            hoverText.position.set(-width / 2 + 10, height / 2 - 10, 2);
+            hoverText.sync();
+        });
     }
 
     // internal only helpers
@@ -300,7 +330,7 @@ export default class LvlMap {
         // Perform a second pass of adjustments specific to target terrain type
         switch (terrainTarget) {
             case Terrain.MOUNTAIN:
-                this.fillInTerrain(newTerrain, Terrain.MOUNTAIN);
+                this.fillInTerrain(newTerrain, Terrain.MOUNTAIN, 4);
                 break;
             case Terrain.SAND:
                 this.fillInTerrain(newTerrain, Terrain.SAND);
@@ -324,8 +354,12 @@ export default class LvlMap {
             this.getNeighbors(coords).forEach((target) => {
                 const tile = this.getTile(target);
 
-                // If this neighbor is already water skip it
-                if (tile.terrain === Terrain.WATER) return;
+                // Only change tiles that are not already water or mountain
+                if (
+                    tile.terrain === Terrain.WATER ||
+                    tile.terrain === Terrain.MOUNTAIN
+                )
+                    return;
 
                 /* based on the number of water tiles surrounding the target
                  * determine if it should be water or coast
@@ -358,8 +392,15 @@ export default class LvlMap {
     fillInTerrain(
         mtnCoords: MapCoords[],
         terrain: Terrain,
-        factor: number = 5
+        factor: number = 5,
+        maxPasses: number = 1,
+        passes: number = 0
     ) {
+        if (passes >= maxPasses) {
+            console.log(`done filling in ${terrain} after ${passes} passes`);
+            return;
+        }
+
         const updatedTiles: MapCoords[] = [];
 
         mtnCoords.forEach((coords) => {
@@ -387,7 +428,13 @@ export default class LvlMap {
             console.log(
                 `making another pass filling in ${terrain} on ${updatedTiles.length} tiles`
             );
-            this.fillInTerrain(updatedTiles, terrain, factor);
+            this.fillInTerrain(
+                updatedTiles,
+                terrain,
+                factor,
+                maxPasses,
+                passes + 1
+            );
         } else {
             console.log(`done filling in ${terrain}`);
         }
@@ -413,12 +460,23 @@ export default class LvlMap {
     // All logic methods
     update() {
         const caster = this.#engine.getMouseRaycaster();
-        const meshes = this.#tiles.flat().map((tile) => tile.mesh);
+        let tempTile: Tile | undefined;
 
-        const hovered = caster.intersectObjects(meshes);
+        this.#tiles.flat().forEach((tile) => {
+            const isHovered = caster.intersectObject(tile.mesh).length > 0;
+            if (isHovered) {
+                tempTile = tile;
+            }
+        });
 
-        if (hovered.length > 0) {
-            this.#outlineShader.selectedObjects = [hovered[0].object];
+        if (tempTile !== undefined) {
+            this.#hoveredTile = tempTile;
+            const terrainType = Terrain[this.#hoveredTile.terrain];
+            this.#hoverText.text = `Currently hovering over: ${terrainType}`;
+        } else {
+            this.#hoveredTile = null;
+            this.#hoverText.text = `Currently hovering over: ...`;
         }
+        this.#hoverText.sync();
     }
 }
