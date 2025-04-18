@@ -10,7 +10,7 @@ import WebGL from 'three/addons/capabilities/WebGL.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { msToS } from './core';
-import { InputHanlder } from './input';
+import { InputHandler } from './input';
 
 export type GameEngineOptions = {
     autoResize: boolean;
@@ -23,7 +23,7 @@ export default class GameEngine {
 
     #renderer: T.WebGLRenderer;
     #composer: EffectComposer;
-    #inputHandler: InputHanlder;
+    #inputHandler: InputHandler;
     #mainRenderPass: RenderPass | null = null;
     #outputPass: OutputPass;
     #camera: T.PerspectiveCamera;
@@ -44,11 +44,10 @@ export default class GameEngine {
     #fps = 0;
     #frameTimeHistory: number[] = [];
     #fpsCounterElem: HTMLElement | null = null;
-    #mousePos = new T.Vector2(-Infinity, -Infinity);
 
     constructor(
         canvas: HTMLCanvasElement,
-        inputHandler: InputHanlder,
+        inputHandler: InputHandler,
         options?: GameEngineOptions
     ) {
         const {
@@ -153,11 +152,6 @@ export default class GameEngine {
             canvas.after(count);
             this.#fpsCounterElem = count;
         }
-
-        window.addEventListener('mousemove', (event) => {
-            const mouseScreenPos = new T.Vector2(event.clientX, event.clientY);
-            this.#mousePos = this.#screenToWorld(mouseScreenPos, true);
-        });
     }
 
     // Internal only utility methods
@@ -170,31 +164,6 @@ export default class GameEngine {
             this.#frameTimeHistory.reduce((a, b) => a + b, 0) /
             this.#frameTimeHistory.length;
         this.#fps = 1000 / avgFrameTime;
-    }
-
-    /* convert screen X,Y coords to world X,Y coords
-     * primarily used with mouse position for raycasting
-     * and UI interactions, toNormalize should be set to true
-     * when raycasting to work properly with ThreeJS raycasting
-     * from camera methods
-     */
-    #screenToWorld(
-        screnePos: T.Vector2,
-        toNormalize: boolean = false
-    ): T.Vector2 {
-        const canvas = this.#renderer.domElement;
-        const rect = canvas.getBoundingClientRect();
-        const worldPos = new T.Vector2(
-            ((screnePos.x - rect.left) * canvas.width) / rect.width,
-            ((screnePos.y - rect.top) * canvas.height) / rect.height
-        );
-
-        if (toNormalize) {
-            worldPos.x = (worldPos.x / canvas.width) * 2 - 1;
-            worldPos.y = (worldPos.y / canvas.height) * -2 + 1;
-        }
-
-        return worldPos;
     }
 
     // Register a listener for when the screen is resized
@@ -277,7 +246,10 @@ export default class GameEngine {
         return caster;
     }
     getMouseRaycaster(): T.Raycaster {
-        return this.getRaycaster(this.#mousePos);
+        const mousePos = this.#inputHandler.toCanvasCoords(
+            this.#inputHandler.getMousePos()
+        );
+        return this.getRaycaster(mousePos);
     }
 
     update(dT: number = 0) {
@@ -358,14 +330,21 @@ export default class GameEngine {
             this.#renderer.autoClear = true;
         }
 
+        const mousePos = this.#inputHandler.getMousePos();
+        const mouseWorldPos = this.#inputHandler.toCanvasCoords(
+            mousePos,
+            false
+        );
         if (this.#displayFps && this.#fpsCounterElem !== null) {
             this.#fpsCounterElem.textContent = `fps: ${this.#fps.toFixed(
                 2
-            )}\nmp: [${this.#mousePos.x.toFixed(3)}, ${this.#mousePos.y.toFixed(
-                3
-            )}]\ncp: [${this.#camera.position.x}, ${this.#camera.position.y}, ${
-                this.#camera.position.z
-            }]`;
+            )}\nmouse_pos: [${mousePos.x.toFixed(2)}, ${mousePos.y.toFixed(
+                2
+            )}]\nmouse_hud_pos: [${mouseWorldPos.x.toFixed(
+                2
+            )}, ${mouseWorldPos.y.toFixed(2)}]\ncam_pos: [${
+                this.#camera.position.x
+            }, ${this.#camera.position.y}, ${this.#camera.position.z}]`;
         }
     }
 }
