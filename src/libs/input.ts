@@ -6,24 +6,44 @@ export enum MouseButton {
     RIGHT = 2,
 }
 
+export enum KeyStates {
+    PRESSED = 0,
+    HELD = 1,
+    RELEASED = 2,
+    NONE = 3,
+}
+
+type KeyStateRecord = Record<string, KeyStates>;
+
 let canvas: HTMLCanvasElement | null = null;
-const keyState: Record<string, boolean> = {};
+
+let prevKeyState: KeyStateRecord | null = null;
+let curKeyState: KeyStateRecord = {};
+
 const mousePos = new T.Vector2(-Infinity, -Infinity);
 
 function processKeyPress(event: KeyboardEvent) {
-    keyState[event.key] = true;
+    if (!event.repeat) {
+        curKeyState[event.key] = KeyStates.PRESSED;
+        console.log(`key pressed`, event.key);
+    } else {
+        console.log(`key held`, event.key);
+    }
 }
 
 function processKeyRelease(event: KeyboardEvent) {
-    keyState[event.key] = false;
+    if (event.repeat === false) {
+        curKeyState[event.key] = KeyStates.RELEASED;
+        console.log(`key released`, event.key);
+    }
 }
 
 function processMouseButtonPress(event: MouseEvent) {
-    keyState[event.button] = true;
+    curKeyState[event.button] = KeyStates.PRESSED;
     console.log(`mouse clicked`, MouseButton[event.button]);
 }
 function processMouseButtonRelease(event: MouseEvent) {
-    keyState[event.button] = false;
+    curKeyState[event.button] = KeyStates.RELEASED;
     console.log(`mouse released`, MouseButton[event.button]);
 }
 function processMouseMove(event: MouseEvent) {
@@ -32,8 +52,10 @@ function processMouseMove(event: MouseEvent) {
 
 export type InputHandler = {
     initialize: (target: HTMLCanvasElement) => void;
-    cleanUp: () => void;
+    deInitialize: () => void;
+    update: () => void;
     isKeyDown: (key: string) => boolean;
+    wasKeyPressed: (key: string) => boolean;
     isMouseButtonDown: (button: MouseButton) => boolean;
     getMousePos: () => T.Vector2;
     toCanvasCoords: (
@@ -52,7 +74,7 @@ export const input: InputHandler = {
         window.addEventListener('mousemove', processMouseMove);
     },
 
-    cleanUp: () => {
+    deInitialize: () => {
         canvas?.removeEventListener('keydown', processKeyPress);
         canvas?.removeEventListener('keyup', processKeyRelease);
         canvas?.removeEventListener('mousedown', processMouseButtonPress);
@@ -60,17 +82,59 @@ export const input: InputHandler = {
         window.removeEventListener('mousemove', processMouseMove);
         canvas = null;
 
-        for (const key in keyState) {
-            keyState[key] = false;
+        for (const key in curKeyState) {
+            curKeyState[key] = KeyStates.NONE;
         }
     },
 
+    update: () => {
+        // update key states if they differ from the previous state
+        if (prevKeyState !== null) {
+            for (const key in prevKeyState) {
+                if (key in curKeyState) {
+                    const curKey = curKeyState[key];
+                    const prevKey = prevKeyState[key];
+
+                    // If a key was pressed last frame update it to held
+                    if (
+                        curKey === KeyStates.PRESSED &&
+                        prevKey === KeyStates.PRESSED
+                    ) {
+                        console.log(`updating ${key} to held`);
+                        curKeyState[key] = KeyStates.HELD;
+                    }
+
+                    // If a key was released last frame update it to none
+                    if (
+                        curKey === KeyStates.RELEASED &&
+                        prevKey === KeyStates.RELEASED
+                    ) {
+                        console.log(`updating ${key} to none`);
+                        curKeyState[key] = KeyStates.NONE;
+                    }
+                }
+            }
+        }
+
+        // store the current key state as the previous state
+        prevKeyState = { ...curKeyState };
+    },
+
     isKeyDown: (key: string) => {
-        return keyState[key] === true;
+        return (
+            curKeyState[key] === KeyStates.PRESSED ||
+            curKeyState[key] === KeyStates.HELD
+        );
+    },
+    wasKeyPressed: (key: string) => {
+        return curKeyState[key] === KeyStates.PRESSED;
     },
 
     isMouseButtonDown: (button: MouseButton) => {
-        return keyState[button] === true;
+        return (
+            curKeyState[button] === KeyStates.PRESSED ||
+            curKeyState[button] === KeyStates.HELD
+        );
     },
 
     getMousePos: () => {
@@ -84,9 +148,18 @@ export const input: InputHandler = {
      *
      * This can be converterd to HUD coordinates by passing
      * normalize = false
+     *
+     * @param browserScreenPos - the position to convert
+     *     defaults to the current mouse position if not
+     *     provided or null
+     * @param normalize - whether to normalize the coordinates
+     *     defaults to true
+     * @return the normalized coordinates
+     *
+     * @throws Error if the canvas is not initialized
      */
     toCanvasCoords: (
-        browserScreenPos?: T.Vector2,
+        browserScreenPos?: T.Vector2 | null,
         normalize = true
     ): T.Vector2 => {
         if (!canvas) {

@@ -15,7 +15,6 @@ input.initialize(canvas);
 const engine = new GameEngine(canvas, input, {
     autoResize: true,
     debug: false,
-    displayFps: true,
 });
 
 const scene = engine.createScene();
@@ -52,6 +51,12 @@ function gameLoop(now: number) {
     const deltaTime = now - lastTimeStamp;
     lastTimeStamp = now;
 
+    input.update();
+
+    if (input.wasKeyPressed('Escape')) {
+        console.log('Escape pressed');
+        isRunning = false;
+    }
     engine.update(deltaTime);
     map.update();
 

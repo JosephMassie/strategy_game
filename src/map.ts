@@ -124,18 +124,15 @@ export default class LvlMap {
 
         const hoverText = new Text();
         this.#hoverText = hoverText;
-        hoverText.fontSize = 24;
-        hoverText.color = 0xffffff;
+        hoverText.fontSize = 20;
         hoverText.anchorX = 'left';
         hoverText.anchorY = 'top';
-        hoverText.textAlign = 'left';
         hoverText.position.set(
             -window.innerWidth / 2 + 10,
             window.innerHeight / 2 - 10,
             2
         );
         hoverText.layers.set(1);
-        hoverText.scale.set(1, 1, 1);
         hoverText.text = 'Currently hovering over: ...';
 
         const hud = engine.getActiveHudScene();

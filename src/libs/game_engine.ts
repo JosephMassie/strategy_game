@@ -5,6 +5,7 @@ import {
     OutputPass,
     RenderPass,
 } from 'three/examples/jsm/Addons.js';
+import { Text } from 'troika-three-text';
 
 import WebGL from 'three/addons/capabilities/WebGL.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -13,9 +14,9 @@ import { msToS } from './core';
 import { InputHandler } from './input';
 
 type GameEngineOptions = {
-    autoResize: boolean;
-    displayFps: boolean;
-    debug: boolean;
+    autoResize?: boolean;
+    displayFps?: boolean;
+    debug?: boolean;
 };
 
 export default class GameEngine {
@@ -43,7 +44,7 @@ export default class GameEngine {
     #displayFps = false;
     #fps = 0;
     #frameTimeHistory: number[] = [];
-    #fpsCounterElem: HTMLElement | null = null;
+    #fpsCounter: Text | null = null;
 
     constructor(
         canvas: HTMLCanvasElement,
@@ -146,14 +147,32 @@ export default class GameEngine {
 
         this.#displayFps = displayFps;
         if (this.#displayFps) {
-            const count = document.createElement('div');
-            count.classList.add('fps-counter');
-
-            canvas.after(count);
-            this.#fpsCounterElem = count;
+            this.showFpsCounter();
         }
     }
 
+    showFpsCounter() {
+        this.#displayFps = true;
+        const text = new Text();
+        text.anchorX = 'right';
+        text.anchorY = 'top';
+        text.textAlign = 'right';
+        text.text = `fps: 0
+            mouse_pos: [0, 0]
+            mouse_hud_pos: [0, 0]
+            cam_pos: [0, 0, 0]`;
+        text.color = 0xffffff;
+        text.fontSize = 16;
+        text.position.set(this.#winWidth / 2 - 10, this.#winHeight / 2 - 10, 0);
+        text.sync();
+        text.layers.set(1);
+        this.#fpsCounter = text;
+
+        // If an active HUD scene is set add the fps counter to it
+        if (this.#activeHud !== null) {
+            this.#activeHud.add(this.#fpsCounter);
+        }
+    }
     // Internal only utility methods
     #calcFps(dT: number) {
         this.#frameTimeHistory.push(Math.round(dT));
@@ -195,6 +214,10 @@ export default class GameEngine {
     // Scene control methods specifically for the HUD
     setActiveHudScene(s: T.Scene) {
         this.#activeHud = s;
+        // make sure to add any debug hud elements to the active hud scene
+        if (this.#displayFps && this.#fpsCounter !== null) {
+            this.#activeHud.add(this.#fpsCounter);
+        }
     }
     getActiveHudScene(): T.Scene | null {
         return this.#activeHud;
@@ -294,6 +317,7 @@ export default class GameEngine {
             const cameraRotateSpd = 0.001;
             let cameraRotation = 0;
             if (this.#inputHandler.isKeyDown('ArrowLeft')) {
+                console.log(`rotate camera left`);
                 cameraRotation += cameraRotateSpd;
             }
 
@@ -301,11 +325,38 @@ export default class GameEngine {
                 cameraRotation -= cameraRotateSpd;
             }
             this.rotateCamera(new T.Vector3(0, 0, 1), cameraRotation * dT);
+
+            if (this.#inputHandler.wasKeyPressed('=')) {
+                console.log(`activate fps counter`);
+                this.showFpsCounter();
+            }
         }
 
         // clamp camera position to prevent going below the ground plane
         if (this.#camera.position.y < 5) {
             this.#camera.position.y = 5;
+        }
+
+        const mousePos = this.#inputHandler.getMousePos();
+        const mouseWorldPos = this.#inputHandler.toCanvasCoords(
+            mousePos,
+            false
+        );
+        if (this.#displayFps && this.#fpsCounter !== null) {
+            this.#fpsCounter.text = `fps: ${this.#fps.toFixed(
+                2
+            )}\nmouse_pos: [${mousePos.x.toFixed(2)}, ${mousePos.y.toFixed(
+                2
+            )}]\nmouse_hud_pos: [${mouseWorldPos.x.toFixed(
+                2
+            )}, ${mouseWorldPos.y.toFixed(
+                2
+            )}]\ncam_pos: [${this.#camera.position.x.toFixed(
+                2
+            )}, ${this.#camera.position.y.toFixed(
+                2
+            )}, ${this.#camera.position.z.toFixed(2)}]`;
+            this.#fpsCounter.sync();
         }
     }
     /* Render either the current active scene or provided scene */
@@ -328,23 +379,6 @@ export default class GameEngine {
             this.#renderer.clearDepth();
             this.#renderer.render(this.#activeHud, this.#hudCamera);
             this.#renderer.autoClear = true;
-        }
-
-        const mousePos = this.#inputHandler.getMousePos();
-        const mouseWorldPos = this.#inputHandler.toCanvasCoords(
-            mousePos,
-            false
-        );
-        if (this.#displayFps && this.#fpsCounterElem !== null) {
-            this.#fpsCounterElem.textContent = `fps: ${this.#fps.toFixed(
-                2
-            )}\nmouse_pos: [${mousePos.x.toFixed(2)}, ${mousePos.y.toFixed(
-                2
-            )}]\nmouse_hud_pos: [${mouseWorldPos.x.toFixed(
-                2
-            )}, ${mouseWorldPos.y.toFixed(2)}]\ncam_pos: [${
-                this.#camera.position.x
-            }, ${this.#camera.position.y}, ${this.#camera.position.z}]`;
         }
     }
 }
