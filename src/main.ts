@@ -1,10 +1,15 @@
 import './style.css';
 
 import * as T from 'three';
+import { Text } from 'troika-three-text';
 
-import GameEngine from './libs/game_engine';
+import GameEngine from '@libraries/game_engine';
 import LvlMap from './map';
-import { input } from './libs/input';
+import { input, MouseButton } from '@libraries/input';
+import { updateTimers } from '@libraries/timing';
+import { Mine, Building } from './components/buildings';
+import { BUILDING_COSTS } from './constants';
+import { addMinerals, getMinerals } from './game_state';
 
 const canvas = document.querySelector(
     'canvas#background'
@@ -16,6 +21,7 @@ const engine = new GameEngine(canvas, input, {
     autoResize: true,
     debug: false,
 });
+engine.enableOrbitCtrls();
 
 const scene = engine.createScene();
 engine.setActiveScene(scene);
@@ -28,18 +34,35 @@ scene.add(ambientLight);
 
 const rows = 100;
 const columns = rows;
-const tileSize = 1;
-
+const tileSize = 4;
 const width = rows * tileSize;
 
-const startPos = new T.Vector3(-width / 2, -1, -width / 2);
-engine.cameraLookAt(new T.Vector3(0, 0, 0));
-engine.rotateCamera(new T.Vector3(0, 0, 1), 1.57);
-
-const map = new LvlMap(engine, rows, columns, tileSize, startPos);
+const map = new LvlMap(
+    engine,
+    rows,
+    columns,
+    tileSize,
+    new T.Vector3(-width / 2, 0, -width / 2)
+);
 map.addToScene();
 
 canvas.focus();
+
+const resourceMonitor = new Text();
+resourceMonitor.text = `Minerals: ${getMinerals()}`;
+resourceMonitor.fontSize = 16;
+resourceMonitor.anchorX = 'left';
+resourceMonitor.anchorY = 'top';
+resourceMonitor.position.set(
+    -window.innerWidth / 2 + 10,
+    window.innerHeight / 2 - 10,
+    0
+);
+resourceMonitor.layers.set(1);
+resourceMonitor.sync();
+hudScene.add(resourceMonitor);
+
+let buildings: Array<Building> = [];
 
 let isRunning = true;
 let lastTimeStamp: number = performance.now();
@@ -51,14 +74,35 @@ function gameLoop(now: number) {
     const deltaTime = now - lastTimeStamp;
     lastTimeStamp = now;
 
+    updateTimers(deltaTime);
     input.update();
 
-    if (input.wasKeyPressed('Escape')) {
+    if (input.isKeyPressed('Escape')) {
         console.log('Escape pressed');
         isRunning = false;
     }
     engine.update(deltaTime);
     map.update();
+
+    buildings.forEach((building) => {
+        building.update();
+    });
+
+    if (input.wasMouseButtonPressedButNotHeld(MouseButton.LEFT)) {
+        const focusedTile = map.getHoveredTile();
+        console.log(`looking at tile: ${focusedTile?.terrain}`);
+        if (focusedTile !== null && getMinerals() >= BUILDING_COSTS.mine) {
+            addMinerals(-BUILDING_COSTS.mine);
+            const mine = new Mine();
+            mine.position.copy(focusedTile.position);
+            mine.position.y += 1;
+            scene.add(mine);
+            buildings.push(mine);
+        }
+    }
+
+    resourceMonitor.text = `Minerals: ${getMinerals()}`;
+    resourceMonitor.sync();
 
     engine.render(deltaTime);
 

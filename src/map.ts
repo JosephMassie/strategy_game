@@ -1,9 +1,7 @@
 import * as T from 'three';
-import { Text } from 'troika-three-text';
 
-import { randInt } from './libs/core';
-import GameEngine from './libs/game_engine';
-//import { OutlinePass } from 'three/examples/jsm/Addons.js';
+import { randInt } from '@libraries/core';
+import GameEngine from '@libraries/game_engine';
 
 type MapCoords = [x: number, y: number];
 
@@ -50,14 +48,12 @@ const mtnMat = new T.MeshStandardMaterial({
 
 export default class LvlMap {
     #engine: GameEngine;
-    //#outlineShader: OutlinePass;
 
     #width: number;
     #height: number;
     #tileSize: number;
     #tiles: Tile[][];
     #hoveredTile: Tile | null = null;
-    #hoverText: Text;
 
     constructor(
         engine: GameEngine,
@@ -66,28 +62,16 @@ export default class LvlMap {
         tileSize: number = 4,
         startPos: T.Vector3 = new T.Vector3(0, 0, 0)
     ) {
-        const baseTileGeo = this.#makeBaseTile();
-
         console.log(`generating ${width}x${height} map`);
 
         this.#engine = engine;
-        /* this.#outlineShader = engine.createOutlineShader()!;
-        this.#outlineShader.edgeGlow = 1;
-        this.#outlineShader.edgeStrength = 8;
-        this.#outlineShader.edgeThickness = 8;
-        this.#outlineShader.pulsePeriod = 3;
-        this.#outlineShader.visibleEdgeColor = new T.Color(
-            'hsl(295, 98.30%, 52.90%)'
-        );
-        this.#outlineShader.visibleEdgeColor = new T.Color(
-            'hsl(295, 98.30%, 52.90%)'
-        ); */
 
         this.#width = width;
         this.#height = height;
         this.#tileSize = tileSize;
         this.#tiles = Array(height).fill([]);
 
+        const baseTileGeo = this.#makeBaseTile();
         for (let y = 0; y < height; y++) {
             if (this.#tiles[y].length === 0) {
                 this.#tiles[y] = Array(width).fill(null);
@@ -121,29 +105,6 @@ export default class LvlMap {
 
         console.log(`laying down sand`);
         this.#terraForm(Terrain.SAND, { percentCoverage: 0.1 });
-
-        const hoverText = new Text();
-        this.#hoverText = hoverText;
-        hoverText.fontSize = 20;
-        hoverText.anchorX = 'left';
-        hoverText.anchorY = 'top';
-        hoverText.position.set(
-            -window.innerWidth / 2 + 10,
-            window.innerHeight / 2 - 10,
-            2
-        );
-        hoverText.layers.set(1);
-        hoverText.text = 'Currently hovering over: ...';
-
-        const hud = engine.getActiveHudScene();
-        if (hud !== null) {
-            hud.add(hoverText);
-            hoverText.sync();
-        }
-        engine.whenResized((width, height) => {
-            hoverText.position.set(-width / 2 + 10, height / 2 - 10, 2);
-            hoverText.sync();
-        });
     }
 
     // internal only helpers
@@ -467,12 +428,10 @@ export default class LvlMap {
 
         if (tempTile !== undefined) {
             this.#hoveredTile = tempTile;
-            const terrainType = Terrain[this.#hoveredTile.terrain];
-            this.#hoverText.text = `Currently hovering over: ${terrainType}`;
-        } else {
-            this.#hoveredTile = null;
-            this.#hoverText.text = `Currently hovering over: ...`;
         }
-        this.#hoverText.sync();
+    }
+
+    getHoveredTile(): Tile | null {
+        return this.#hoveredTile;
     }
 }

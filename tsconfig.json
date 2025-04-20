@@ -21,6 +21,9 @@
         "noUncheckedSideEffectImports": true,
         "typeRoots": ["./node_modules/@types", "./types"],
         "paths": {
+            "@/*": ["./src/*"],
+            "@libraries/*": ["./src/libraries/*"],
+            "@types/*": ["./types/*"],
             "troika-three-text": ["./types/troika-three-text.d.ts"]
         }
     },

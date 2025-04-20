@@ -10,8 +10,9 @@ import { Text } from 'troika-three-text';
 import WebGL from 'three/addons/capabilities/WebGL.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import { msToS } from './core';
-import { InputHandler } from './input';
+import { msToS, vec2ToString, vec3ToString } from '@libraries/core';
+import { InputHandler } from '@libraries/input';
+import { CAMERA_SPEED } from '@/constants';
 
 type GameEngineOptions = {
     autoResize?: boolean;
@@ -38,7 +39,7 @@ export default class GameEngine {
     #winHeight: number;
 
     #autoResize = false;
-    #resizeCooldown: number | null = null;
+    #resizeCooldown: NodeJS.Timeout | null = null;
     #resizeListeners: Array<(width: number, height: number) => void> = [];
 
     #displayFps = false;
@@ -86,7 +87,8 @@ export default class GameEngine {
             0.1,
             1000
         );
-        this.#camera.position.setY(100);
+        this.#camera.position.set(20, 50, 20);
+        this.#camera.lookAt(new T.Vector3(0, 0, 0));
         this.#camera.layers.enable(0);
 
         const halfWinWidth = this.#winWidth / 2;
@@ -106,6 +108,9 @@ export default class GameEngine {
         if (this.#autoResize) {
             window.addEventListener('resize', () => {
                 if (this.#resizeCooldown != null) {
+                    console.log(
+                        `already processing reize reseting calculation`
+                    );
                     clearTimeout(this.#resizeCooldown);
                 }
                 console.log(`resize occured`);
@@ -262,6 +267,15 @@ export default class GameEngine {
             this.#camera,
             this.#renderer.domElement
         );
+
+        this.#orbitCtrls.keys = {
+            LEFT: 'KeyA',
+            UP: 'KeyW',
+            RIGHT: 'KeyD',
+            BOTTOM: 'KeyS',
+        };
+        this.#orbitCtrls.keyPanSpeed = 20;
+        this.#orbitCtrls.listenToKeyEvents(window);
     }
     getRaycaster(source: T.Vector2): T.Raycaster {
         const caster = new T.Raycaster();
@@ -277,64 +291,58 @@ export default class GameEngine {
 
     update(dT: number = 0) {
         this.#calcFps(dT);
+        const secDt = msToS(dT);
 
         if (this.#debug)
             console.log(
-                `dT -> ${msToS(dT).toFixed(2)}s fps -> ${this.#fps.toFixed(2)}`
+                `dT -> ${secDt.toFixed(2)}s fps -> ${this.#fps.toFixed(2)}`
             );
+
+        /* clamp camera position to prevent going below the ground plane
+         * for oribt controls this must be done before it updates and the
+         * keyboard controls are agnostic to its timing so we do it here
+         */
+        if (this.#camera.position.y < 5) {
+            this.#camera.position.y = 5;
+        }
 
         if (this.#orbitCtrls) {
             this.#orbitCtrls.update();
         } else {
-            const cameraSpeed = 0.1;
+            const directions: Array<[string, T.Vector3]> = [
+                ['w', new T.Vector3(0, 0, CAMERA_SPEED)],
+                ['s', new T.Vector3(0, 0, -CAMERA_SPEED)],
+                ['a', new T.Vector3(-CAMERA_SPEED, 0, 0)],
+                ['d', new T.Vector3(CAMERA_SPEED, 0, 0)],
+                ['ArrowUp', new T.Vector3(0, -CAMERA_SPEED, 0)],
+                ['ArrowDown', new T.Vector3(0, CAMERA_SPEED, 0)],
+            ];
+
             let cameraVelocity = new T.Vector3(0, 0);
-            if (this.#inputHandler.isKeyDown('w')) {
-                cameraVelocity.add(new T.Vector3(-cameraSpeed, 0, 0));
-            }
-
-            if (this.#inputHandler.isKeyDown('s')) {
-                cameraVelocity.add(new T.Vector3(cameraSpeed, 0, 0));
-            }
-
-            if (this.#inputHandler.isKeyDown('a')) {
-                cameraVelocity.add(new T.Vector3(0, 0, cameraSpeed));
-            }
-
-            if (this.#inputHandler.isKeyDown('d')) {
-                cameraVelocity.add(new T.Vector3(0, 0, -cameraSpeed));
-            }
-
-            if (this.#inputHandler.isKeyDown('ArrowUp')) {
-                cameraVelocity.add(new T.Vector3(0, -cameraSpeed, 0));
-            }
-
-            if (this.#inputHandler.isKeyDown('ArrowDown')) {
-                cameraVelocity.add(new T.Vector3(0, cameraSpeed, 0));
-            }
-            cameraVelocity.multiplyScalar(dT);
+            directions.forEach(([key, vec]) => {
+                if (this.#inputHandler.isKeyDown(key)) {
+                    cameraVelocity.add(vec);
+                }
+            });
+            cameraVelocity.multiplyScalar(secDt);
             this.moveCamera(cameraVelocity);
 
-            const cameraRotateSpd = 0.001;
+            const cameraRotateSpd = 1;
             let cameraRotation = 0;
-            if (this.#inputHandler.isKeyDown('ArrowLeft')) {
+            if (this.#inputHandler.isKeyDown('q')) {
                 console.log(`rotate camera left`);
                 cameraRotation += cameraRotateSpd;
             }
 
-            if (this.#inputHandler.isKeyDown('ArrowRight')) {
+            if (this.#inputHandler.isKeyDown('e')) {
                 cameraRotation -= cameraRotateSpd;
             }
-            this.rotateCamera(new T.Vector3(0, 0, 1), cameraRotation * dT);
-
-            if (this.#inputHandler.wasKeyPressed('=')) {
-                console.log(`activate fps counter`);
-                this.showFpsCounter();
-            }
+            this.rotateCamera(new T.Vector3(0, 0, 1), cameraRotation * secDt);
         }
 
-        // clamp camera position to prevent going below the ground plane
-        if (this.#camera.position.y < 5) {
-            this.#camera.position.y = 5;
+        if (this.#inputHandler.isKeyPressed('=')) {
+            console.log(`activate fps counter`);
+            this.showFpsCounter();
         }
 
         const mousePos = this.#inputHandler.getMousePos();
@@ -345,17 +353,13 @@ export default class GameEngine {
         if (this.#displayFps && this.#fpsCounter !== null) {
             this.#fpsCounter.text = `fps: ${this.#fps.toFixed(
                 2
-            )}\nmouse_pos: [${mousePos.x.toFixed(2)}, ${mousePos.y.toFixed(
+            )}\nmouse_pos: ${vec2ToString(
+                mousePos,
                 2
-            )}]\nmouse_hud_pos: [${mouseWorldPos.x.toFixed(
+            )}\nmouse_hud_pos: ${vec2ToString(
+                mouseWorldPos,
                 2
-            )}, ${mouseWorldPos.y.toFixed(
-                2
-            )}]\ncam_pos: [${this.#camera.position.x.toFixed(
-                2
-            )}, ${this.#camera.position.y.toFixed(
-                2
-            )}, ${this.#camera.position.z.toFixed(2)}]`;
+            )}\ncam_pos: ${vec3ToString(this.#camera.position, 2)}`;
             this.#fpsCounter.sync();
         }
     }
