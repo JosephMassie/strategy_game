@@ -22,10 +22,11 @@
         "typeRoots": ["./node_modules/@types", "./types"],
         "paths": {
             "@/*": ["./src/*"],
-            "@libraries/*": ["./src/libraries/*"],
             "@types/*": ["./types/*"],
+            "@libraries/*": ["./src/libraries/*"],
+            "@components/*": ["./src/components/*"],
             "troika-three-text": ["./types/troika-three-text.d.ts"]
         }
     },
-    "include": ["src"]
+    "include": ["src", "types"]
 }

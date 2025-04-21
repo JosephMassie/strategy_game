@@ -50,3 +50,11 @@ export function resetTimer(timer: Timer) {
 export function removeTimer(timer: Timer) {
     timers = timers.filter((t) => t !== timer);
 }
+
+window.checkTimers = () => {
+    timers.forEach((timer, i) => {
+        console.log(
+            `Timer[${i}]: ${timer.elapsed}/${timer.duration} - ${timer.isDone}`
+        );
+    });
+};

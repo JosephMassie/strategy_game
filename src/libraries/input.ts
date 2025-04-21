@@ -137,17 +137,14 @@ export const input: InputHandler = {
         if (this.isKeyPressed(key)) {
             console.log('button pressed');
             if (key in inputTimers) {
-                console.log('button timer reset');
                 resetTimer(inputTimers[key]);
             } else {
-                console.log('button timer set');
                 inputTimers[key] = setTimer(INPUT_TAP_COOLDOWN);
             }
             return false;
         }
 
         if (this.isKeyReleased(key)) {
-            console.log('button released');
             if (key in inputTimers) {
                 const timer = inputTimers[key];
                 removeTimer(timer);
@@ -161,7 +158,6 @@ export const input: InputHandler = {
         if (key in inputTimers) {
             const timer = inputTimers[key];
             if (timer.isDone) {
-                console.log('button timer done');
                 delete inputTimers[key];
                 return !this.isKeyDown(key);
             }
@@ -184,19 +180,15 @@ export const input: InputHandler = {
     },
     wasMouseButtonPressedButNotHeld(button: MouseButton): boolean {
         if (this.isMouseButtonPressed(button)) {
-            console.log('button pressed');
             if (button in inputTimers) {
-                console.log('button timer reset');
                 resetTimer(inputTimers[button]);
             } else {
-                console.log('button timer set');
                 inputTimers[button] = setTimer(INPUT_TAP_COOLDOWN);
             }
             return false;
         }
 
         if (this.isMouseButtonReleased(button)) {
-            console.log('button released');
             if (button in inputTimers) {
                 const timer = inputTimers[button];
                 removeTimer(timer);
@@ -208,7 +200,6 @@ export const input: InputHandler = {
         if (button in inputTimers) {
             const timer = inputTimers[button];
             if (timer.isDone) {
-                console.log('button timer done');
                 delete inputTimers[button];
                 return !this.isMouseButtonDown(button);
             }

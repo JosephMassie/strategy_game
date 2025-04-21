@@ -1,9 +1,17 @@
-let minerals = 50;
+export enum ResourceTypes {
+    MINERALS,
+    FOOD,
+}
 
-export const getMinerals = () => minerals;
-export const setMinerals = (value: number) => {
-    minerals = value;
+const resources = {
+    [ResourceTypes.MINERALS]: 50,
+    [ResourceTypes.FOOD]: 10,
 };
-export const addMinerals = (value: number) => {
-    minerals += value;
+
+export const getResource = (type: ResourceTypes) => resources[type];
+export const setResource = (type: ResourceTypes, value: number) => {
+    resources[type] = value;
+};
+export const addResource = (type: ResourceTypes, value: number) => {
+    resources[type] += value;
 };

@@ -4,12 +4,15 @@ import * as T from 'three';
 import { Text } from 'troika-three-text';
 
 import GameEngine from '@libraries/game_engine';
-import LvlMap from './map';
+import LvlMap, { Terrain } from './map';
 import { input, MouseButton } from '@libraries/input';
 import { updateTimers } from '@libraries/timing';
-import { Mine, Building } from './components/buildings';
-import { BUILDING_COSTS } from './constants';
-import { addMinerals, getMinerals } from './game_state';
+import {
+    Building,
+    mineConstructor,
+    farmConstructor,
+} from '@components/buildings';
+import { addResource, getResource, ResourceTypes } from './game_state';
 
 const canvas = document.querySelector(
     'canvas#background'
@@ -49,7 +52,8 @@ map.addToScene();
 canvas.focus();
 
 const resourceMonitor = new Text();
-resourceMonitor.text = `Minerals: ${getMinerals()}`;
+resourceMonitor.text = `Minerals: ${getResource(ResourceTypes.MINERALS)}
+Food: ${getResource(ResourceTypes.FOOD)}`;
 resourceMonitor.fontSize = 16;
 resourceMonitor.anchorX = 'left';
 resourceMonitor.anchorY = 'top';
@@ -91,17 +95,38 @@ function gameLoop(now: number) {
     if (input.wasMouseButtonPressedButNotHeld(MouseButton.LEFT)) {
         const focusedTile = map.getHoveredTile();
         console.log(`looking at tile: ${focusedTile?.terrain}`);
-        if (focusedTile !== null && getMinerals() >= BUILDING_COSTS.mine) {
-            addMinerals(-BUILDING_COSTS.mine);
-            const mine = new Mine();
-            mine.position.copy(focusedTile.position);
-            mine.position.y += 1;
-            scene.add(mine);
-            buildings.push(mine);
+        if (focusedTile !== null) {
+            switch (focusedTile.terrain) {
+                case Terrain.MOUNTAIN:
+                    console.log(`attempting to construct a mine`);
+                    if (mineConstructor.checkCost()) {
+                        const mine = mineConstructor.build();
+                        mine.position.copy(focusedTile.position);
+                        mine.position.y += 1;
+                        scene.add(mine);
+                        buildings.push(mine);
+                    }
+                    break;
+                case Terrain.GRASS:
+                    if (farmConstructor.checkCost()) {
+                        const farm = farmConstructor.build();
+                        farm.position.copy(focusedTile.position);
+                        farm.position.y += 1;
+                        scene.add(farm);
+                        buildings.push(farm);
+                    }
+                    break;
+                case Terrain.WATER:
+                    break;
+                case Terrain.SAND:
+                    break;
+                default:
+            }
         }
     }
 
-    resourceMonitor.text = `Minerals: ${getMinerals()}`;
+    resourceMonitor.text = `Minerals: ${getResource(ResourceTypes.MINERALS)}
+Food: ${getResource(ResourceTypes.FOOD)}`;
     resourceMonitor.sync();
 
     engine.render(deltaTime);
