@@ -1,21 +1,21 @@
 {
-  "name": "three_js_playground",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "@types/node": "^22.14.1",
-    "typescript": "~5.7.2",
-    "vite": "^6.1.0"
-  },
-  "dependencies": {
-    "@types/three": "^0.173.0",
-    "three": "^0.173.0",
-    "troika-three-text": "^0.52.4"
-  }
+    "name": "three_js_playground",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview"
+    },
+    "devDependencies": {
+        "@types/node": "^22.14.1",
+        "typescript": "~5.7.2",
+        "vite": "^6.1.0"
+    },
+    "dependencies": {
+        "@types/three": "^0.173.0",
+        "three": "^0.173.0",
+        "troika-three-text": "^0.52.4"
+    }
 }

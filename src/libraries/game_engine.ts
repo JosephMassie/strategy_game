@@ -6,6 +6,7 @@ import {
     RenderPass,
 } from 'three/examples/jsm/Addons.js';
 import { Text } from 'troika-three-text';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import WebGL from 'three/addons/capabilities/WebGL.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -18,16 +19,24 @@ type GameEngineOptions = {
     autoResize?: boolean;
     displayFps?: boolean;
     debug?: boolean;
+    useShaders?: boolean;
 };
+
+const gltfLoader = new GLTFLoader();
 
 export default class GameEngine {
     #debug = false;
 
     #renderer: T.WebGLRenderer;
+
+    // All shader related variables
+    #useShaders: boolean;
     #composer: EffectComposer;
     #inputHandler: InputHandler;
     #mainRenderPass: RenderPass | null = null;
+    #hudRenderPass: RenderPass | null = null;
     #outputPass: OutputPass;
+
     #camera: T.PerspectiveCamera;
     #hudCamera: T.OrthographicCamera;
     #activeScene: T.Scene | null = null;
@@ -56,9 +65,11 @@ export default class GameEngine {
             autoResize = true,
             displayFps = false,
             debug = false,
+            useShaders = false,
         } = options ?? {};
 
         this.#debug = debug;
+        this.#useShaders = useShaders;
 
         this.#inputHandler = inputHandler;
 
@@ -82,10 +93,9 @@ export default class GameEngine {
         this.#composer.addPass(this.#outputPass);
 
         this.#camera = new T.PerspectiveCamera(
-            75,
+            90,
             this.#winWidth / this.#winHeight,
-            0.1,
-            1000
+            0.1
         );
         this.#camera.position.set(20, 50, 20);
         this.#camera.lookAt(new T.Vector3(0, 0, 0));
@@ -223,6 +233,13 @@ export default class GameEngine {
         if (this.#displayFps && this.#fpsCounter !== null) {
             this.#activeHud.add(this.#fpsCounter);
         }
+
+        if (this.#hudRenderPass !== null) {
+            this.#composer.removePass(this.#hudRenderPass);
+        }
+
+        this.#hudRenderPass = new RenderPass(this.#activeHud, this.#hudCamera);
+        this.#composer.addPass(this.#hudRenderPass);
     }
     getActiveHudScene(): T.Scene | null {
         return this.#activeHud;
@@ -302,9 +319,11 @@ export default class GameEngine {
          * for oribt controls this must be done before it updates and the
          * keyboard controls are agnostic to its timing so we do it here
          */
-        if (this.#camera.position.y < 5) {
-            this.#camera.position.y = 5;
-        }
+        const maxViewDist = 700;
+        this.#camera.position.clamp(
+            new T.Vector3(-maxViewDist, 5, -maxViewDist),
+            new T.Vector3(maxViewDist, maxViewDist, maxViewDist)
+        );
 
         if (this.#orbitCtrls) {
             this.#orbitCtrls.update();
@@ -364,25 +383,39 @@ export default class GameEngine {
         }
     }
     /* Render either the current active scene or provided scene */
-    render(dT: number, scene?: T.Scene) {
-        const curScene = scene ?? this.#activeScene;
-
-        if (curScene === null) {
-            console.error(`no scene provided or active scene set to render`);
+    render(dT: number) {
+        if (this.#activeScene === null) {
+            console.error(`no active scene set to render`);
             return;
         }
 
-        if (this.#composer && this.#composer.passes.length > 2) {
+        if (this.#useShaders) {
             this.#composer.render(dT);
         } else {
-            this.#renderer.render(curScene, this.#camera);
-        }
+            this.#renderer.render(this.#activeScene, this.#camera);
 
-        if (this.#activeHud != null) {
-            this.#renderer.autoClear = false;
-            this.#renderer.clearDepth();
-            this.#renderer.render(this.#activeHud, this.#hudCamera);
-            this.#renderer.autoClear = true;
+            if (this.#activeHud != null) {
+                this.#renderer.autoClear = false;
+                this.#renderer.clearDepth();
+                this.#renderer.render(this.#activeHud, this.#hudCamera);
+                this.#renderer.autoClear = true;
+            }
         }
+    }
+
+    // Additional helper methods to ease interaction with ThreeJS
+    loadModelPromise(url: string): Promise<T.Mesh> {
+        return new Promise<T.Mesh>((resolve, reject) => {
+            gltfLoader.load(
+                url,
+                (gltf) => {
+                    resolve(gltf.scene.children[0] as T.Mesh);
+                },
+                undefined,
+                (err) => {
+                    reject(err);
+                }
+            );
+        });
     }
 }

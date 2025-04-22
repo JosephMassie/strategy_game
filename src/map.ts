@@ -13,7 +13,7 @@ export enum Terrain {
 }
 export type Tile = {
     terrain: Terrain;
-    mesh: T.Mesh;
+    mesh: T.Mesh | null;
     position: T.Vector3;
 };
 
@@ -31,35 +31,29 @@ type TerraFormOptions = {
     terraformerFactor?: number;
 };
 
-const textureLoader = new T.TextureLoader();
-
-const grassMat = new T.MeshStandardMaterial({
-    map: textureLoader.load('/grass.png'),
-});
-const waterMat = new T.MeshStandardMaterial({
-    map: textureLoader.load('/water.png'),
-});
-const sandMat = new T.MeshStandardMaterial({
-    map: textureLoader.load('/sand.png'),
-});
-const mtnMat = new T.MeshStandardMaterial({
-    map: textureLoader.load('/mountain.png'),
-});
+const sun = new T.DirectionalLight(0xffff44, 4);
+sun.castShadow = true;
+const tileSize = 12;
 
 export default class LvlMap {
     #engine: GameEngine;
 
     #width: number;
     #height: number;
-    #tileSize: number;
     #tiles: Tile[][];
     #hoveredTile: Tile | null = null;
+
+    #modelPromise: Promise<Record<string, T.Mesh>>;
+    // All models
+    #grassModel: T.Mesh | null = null;
+    #waterModel: T.Mesh | null = null;
+    #sandModel: T.Mesh | null = null;
+    #mountainModel: T.Mesh | null = null;
 
     constructor(
         engine: GameEngine,
         width: number,
         height: number,
-        tileSize: number = 4,
         startPos: T.Vector3 = new T.Vector3(0, 0, 0)
     ) {
         console.log(`generating ${width}x${height} map`);
@@ -68,49 +62,67 @@ export default class LvlMap {
 
         this.#width = width;
         this.#height = height;
-        this.#tileSize = tileSize;
         this.#tiles = Array(height).fill([]);
 
-        const baseTileGeo = this.#makeBaseTile();
-        for (let y = 0; y < height; y++) {
-            if (this.#tiles[y].length === 0) {
-                this.#tiles[y] = Array(width).fill(null);
-            }
+        sun.position.set(50, 60, 50);
 
-            for (let x = 0; x < width; x++) {
-                if (this.#tiles[y][x] === null) {
-                    const position = new T.Vector3(
-                        x * tileSize,
-                        0,
-                        y * tileSize
-                    );
-                    position.add(startPos);
-                    const mesh = new T.Mesh(baseTileGeo, grassMat);
-                    mesh.position.add(position);
+        this.#modelPromise = this.#loadModels().then((models) => {
+            console.log(`all map tile models loaded`);
+            this.#grassModel = models.grass;
+            this.#waterModel = models.water;
+            this.#sandModel = models.sand;
+            this.#mountainModel = models.mountain;
 
-                    this.#tiles[y][x] = {
-                        terrain: Terrain.GRASS,
-                        mesh,
-                        position,
-                    };
+            for (let y = 0; y < height; y++) {
+                if (this.#tiles[y].length === 0) {
+                    this.#tiles[y] = Array(width).fill(null);
+                }
+
+                for (let x = 0; x < width; x++) {
+                    if (this.#tiles[y][x] === null) {
+                        const position = new T.Vector3(
+                            x * tileSize,
+                            0,
+                            y * tileSize
+                        );
+                        position.add(startPos);
+                        const mesh = this.#grassModel?.clone() ?? null;
+                        mesh?.position.copy(position);
+
+                        this.#tiles[y][x] = {
+                            terrain: Terrain.GRASS,
+                            mesh,
+                            position,
+                        };
+                    }
                 }
             }
-        }
 
-        console.log(`raising mountains`);
-        this.#terraForm(Terrain.MOUNTAIN, { percentCoverage: 0.15 });
+            console.log(`raising mountains`);
+            this.#terraForm(Terrain.MOUNTAIN, { percentCoverage: 0.15 });
 
-        console.log(`adding in water`);
-        this.#terraForm(Terrain.WATER, { percentCoverage: 0.2 });
+            console.log(`adding in water`);
+            this.#terraForm(Terrain.WATER, { percentCoverage: 0.2 });
 
-        console.log(`laying down sand`);
-        this.#terraForm(Terrain.SAND, { percentCoverage: 0.1 });
+            console.log(`laying down sand`);
+            this.#terraForm(Terrain.SAND, { percentCoverage: 0.1 });
+
+            return models;
+        });
     }
 
-    // internal only helpers
-    #makeBaseTile(): T.BoxGeometry {
-        const box = new T.BoxGeometry(this.#tileSize, 0.1, this.#tileSize);
-        return box;
+    async #loadModels(): Promise<Record<string, T.Mesh>> {
+        const grass = await this.#engine.loadModelPromise('/grass.gltf');
+        const water = await this.#engine.loadModelPromise('/water.gltf');
+        const sand = await this.#engine.loadModelPromise('/sand.gltf');
+        const mountain = await this.#engine.loadModelPromise('/mountain.gltf');
+
+        return {
+            grass,
+            water,
+            sand,
+            mountain,
+        };
     }
 
     // All base tile manipulation methods
@@ -150,27 +162,25 @@ export default class LvlMap {
 
     // All terrain generation methods
     changeTileType(tile: Tile, type: Terrain) {
-        let nMaterial = grassMat;
         // change tille type
         switch (type) {
             case Terrain.GRASS:
-                nMaterial = grassMat;
+                tile.mesh = this.#grassModel!.clone();
                 break;
             case Terrain.MOUNTAIN:
-                nMaterial = mtnMat;
+                tile.mesh = this.#mountainModel!.clone();
                 break;
             case Terrain.WATER:
-                nMaterial = waterMat;
+                tile.mesh = this.#waterModel!.clone();
                 break;
             case Terrain.SAND:
-                nMaterial = sandMat;
+                tile.mesh = this.#sandModel!.clone();
                 break;
             default:
                 console.error(`invalid material to terraform`);
         }
-        //console.log(`changing tile from ${tile.terrain} to ${type}`);
-        tile.mesh.material = nMaterial;
         tile.terrain = type;
+        tile.mesh?.position.copy(tile.position);
     }
     #isTerraformerPosValid(former: TerraFormer): boolean {
         return !(
@@ -401,17 +411,28 @@ export default class LvlMap {
 
     // Add all tiles to the provided or active scene
     addToScene(scene?: T.Scene) {
-        const targetScene = scene ?? this.#engine.getActiveScene();
-        if (targetScene === null) {
-            console.error(
-                `failed to add map to scene, no scene provided or active scene found`
-            );
-            return;
-        }
+        this.#modelPromise
+            .then(() => {
+                const targetScene = scene ?? this.#engine.getActiveScene();
+                if (targetScene === null) {
+                    console.error(
+                        `failed to add map to scene, no scene provided or active scene found`
+                    );
+                    return;
+                }
 
-        this.#tiles.flat().forEach((tile) => {
-            targetScene.add(tile.mesh);
-        });
+                this.#tiles.flat().forEach((tile) => {
+                    if (tile.mesh !== null) targetScene.add(tile.mesh);
+                });
+
+                targetScene.add(sun);
+            })
+            .catch((err) => {
+                console.error(
+                    `failed to add map to scene, tile models failed to load`,
+                    err
+                );
+            });
     }
 
     // All logic methods
@@ -420,6 +441,7 @@ export default class LvlMap {
         let tempTile: Tile | undefined;
 
         this.#tiles.flat().forEach((tile) => {
+            if (tile.mesh === null) return;
             const isHovered = caster.intersectObject(tile.mesh).length > 0;
             if (isHovered) {
                 tempTile = tile;

@@ -21,6 +21,7 @@
         "noUncheckedSideEffectImports": true,
         "typeRoots": ["./node_modules/@types", "./types"],
         "paths": {
+            "*": ["./types/*"],
             "@/*": ["./src/*"],
             "@types/*": ["./types/*"],
             "@libraries/*": ["./src/libraries/*"],

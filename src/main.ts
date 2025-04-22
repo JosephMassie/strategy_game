@@ -12,7 +12,7 @@ import {
     mineConstructor,
     farmConstructor,
 } from '@components/buildings';
-import { addResource, getResource, ResourceTypes } from './game_state';
+import { getResource, ResourceTypes } from './game_state';
 
 const canvas = document.querySelector(
     'canvas#background'
@@ -23,6 +23,7 @@ input.initialize(canvas);
 const engine = new GameEngine(canvas, input, {
     autoResize: true,
     debug: false,
+    useShaders: false,
 });
 engine.enableOrbitCtrls();
 
@@ -32,19 +33,18 @@ engine.setActiveScene(scene);
 const hudScene = engine.createScene();
 engine.setActiveHudScene(hudScene);
 
-const ambientLight = new T.AmbientLight(0xffffff);
+const ambientLight = new T.AmbientLight(0xffffff, 2);
 scene.add(ambientLight);
 
 const rows = 100;
 const columns = rows;
-const tileSize = 4;
+const tileSize = 12;
 const width = rows * tileSize;
 
 const map = new LvlMap(
     engine,
     rows,
     columns,
-    tileSize,
     new T.Vector3(-width / 2, 0, -width / 2)
 );
 map.addToScene();
@@ -54,7 +54,7 @@ canvas.focus();
 const resourceMonitor = new Text();
 resourceMonitor.text = `Minerals: ${getResource(ResourceTypes.MINERALS)}
 Food: ${getResource(ResourceTypes.FOOD)}`;
-resourceMonitor.fontSize = 16;
+resourceMonitor.fontSize = 20;
 resourceMonitor.anchorX = 'left';
 resourceMonitor.anchorY = 'top';
 resourceMonitor.position.set(
@@ -94,21 +94,24 @@ function gameLoop(now: number) {
 
     if (input.wasMouseButtonPressedButNotHeld(MouseButton.LEFT)) {
         const focusedTile = map.getHoveredTile();
-        console.log(`looking at tile: ${focusedTile?.terrain}`);
         if (focusedTile !== null) {
+            console.log(`looking at tile: ${Terrain[focusedTile.terrain]}`);
             switch (focusedTile.terrain) {
                 case Terrain.MOUNTAIN:
                     console.log(`attempting to construct a mine`);
                     if (mineConstructor.checkCost()) {
+                        console.log(`constructed a new mine`);
                         const mine = mineConstructor.build();
                         mine.position.copy(focusedTile.position);
-                        mine.position.y += 1;
+                        mine.position.y += 8;
                         scene.add(mine);
                         buildings.push(mine);
                     }
                     break;
                 case Terrain.GRASS:
+                    console.log(`attempting to construct a farm`);
                     if (farmConstructor.checkCost()) {
+                        console.log(`constructed a new farm`);
                         const farm = farmConstructor.build();
                         farm.position.copy(focusedTile.position);
                         farm.position.y += 1;
