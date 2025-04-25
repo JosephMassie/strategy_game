@@ -104,7 +104,7 @@ export default class GameEngine {
         this.#camera.layers.enable(0);
         this.#isoCamera = new IsometricCameraController(this.#camera, {
             target: center,
-            panSpeed: 100,
+            panSpeed: 200,
             rotationSpeed: 2.5,
             distance: 100,
             minDistance: 50,
@@ -325,17 +325,15 @@ export default class GameEngine {
                 `dT -> ${secDt.toFixed(2)}s fps -> ${this.#fps.toFixed(2)}`
             );
 
-        /* clamp camera position to prevent going below the ground plane
-         * for oribt controls this must be done before it updates and the
-         * keyboard controls are agnostic to its timing so we do it here
-         */
-        /*         const maxViewDist = 1000;
-        this.#camera.position.clamp(
-            new T.Vector3(-maxViewDist, 50, -maxViewDist),
-            new T.Vector3(maxViewDist, maxViewDist, maxViewDist)
-        ); */
-
         if (this.#orbitCtrls) {
+            /* clamp camera position to prevent going below the ground plane
+             * for oribt controls this must be done before it updates
+             */
+            const maxViewDist = 1000;
+            this.#camera.position.clamp(
+                new T.Vector3(-maxViewDist, 50, -maxViewDist),
+                new T.Vector3(maxViewDist, maxViewDist, maxViewDist)
+            );
             this.#orbitCtrls.update();
         } else {
             this.#isoCamera.update();

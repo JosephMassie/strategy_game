@@ -188,35 +188,3 @@ export default class IsometricCameraController {
         this.update();
     }
 }
-
-// Usage example:
-/*
-  // Create an orthographic camera for true isometric projection
-  const aspect = window.innerWidth / window.innerHeight;
-  const frustumSize = 10;
-  const camera = new THREE.OrthographicCamera(
-    frustumSize * aspect / -2, 
-    frustumSize * aspect / 2, 
-    frustumSize / 2, 
-    frustumSize / -2, 
-    1, 
-    1000
-  );
-  
-  // Or perspective camera for perspective projection with isometric view angle
-  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
-  
-  // Initialize the controller
-  const controller = new IsometricCameraController(camera, renderer.domElement, {
-    target: new THREE.Vector3(0, 0, 0),
-    distance: 15,
-    rotationHorizontal: Math.PI / 4,  // 45 degrees
-    rotationVertical: Math.PI / 6     // 30 degrees
-  });
-  
-  // In your animation loop
-  function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-  }
-  */

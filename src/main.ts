@@ -33,7 +33,7 @@ engine.setActiveScene(scene);
 const hudScene = engine.createScene();
 engine.setActiveHudScene(hudScene);
 
-const ambientLight = new T.AmbientLight(0xffffff, 1);
+const ambientLight = new T.AmbientLight(0xffffff, 2);
 scene.add(ambientLight);
 
 const rows = 100;
@@ -92,7 +92,7 @@ function gameLoop(now: number) {
         building.update();
     });
 
-    if (input.wasMouseButtonPressedButNotHeld(MouseButton.LEFT)) {
+    if (input.isMouseButtonPressed(MouseButton.LEFT)) {
         const focusedTile = map.getHoveredTile();
         if (focusedTile !== null) {
             console.log(`looking at tile: ${Terrain[focusedTile.terrain]}`);

@@ -47,7 +47,7 @@ const updateResources = (costs: ResourceList, modifier: number = 1) => {
 };
 
 // Mines
-const mineGeometry = new T.BoxGeometry(1, 3.25, 1.5);
+const mineGeometry = new T.BoxGeometry(4, 8.25, 3.5);
 const mineMaterial = new T.MeshBasicMaterial({ color: 0x040404 });
 const mineInactiveMaterial = new T.MeshBasicMaterial({ color: 0x888888 });
 
@@ -98,7 +98,7 @@ export class Mine extends Building {
 }
 
 // Farms
-const farmGeometry = new T.BoxGeometry(2, 1.25, 3.5);
+const farmGeometry = new T.BoxGeometry(4, 3.25, 8.5);
 const farmMaterial = new T.MeshBasicMaterial({ color: 0xf0f000 });
 
 export const farmConstructor: BuildingConstructor = {

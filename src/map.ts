@@ -31,7 +31,7 @@ type TerraFormOptions = {
     terraformerFactor?: number;
 };
 
-const sun = new T.DirectionalLight(0xffff88, 3);
+const sun = new T.DirectionalLight(0xffffff, 2);
 sun.castShadow = true;
 let tileSize = 12;
 
