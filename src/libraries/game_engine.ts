@@ -98,17 +98,16 @@ export default class GameEngine {
             this.#winWidth / this.#winHeight,
             0.1
         );
-        this.#camera.position.set(20, 50, 20);
-        const center = new T.Vector3(0, 0, 0);
-        this.#camera.lookAt(center);
+
         this.#camera.layers.enable(0);
         this.#isoCamera = new IsometricCameraController(this.#camera, {
-            target: center,
+            target: new T.Vector3(0, 0, 0),
             panSpeed: 200,
             rotationSpeed: 2.5,
             distance: 100,
             minDistance: 50,
             maxDistance: 300,
+            rotationHorizontal: Math.PI / -4,
         });
 
         const halfWinWidth = this.#winWidth / 2;
@@ -279,13 +278,13 @@ export default class GameEngine {
 
     // Camera Control Methods
     moveCamera(vec: T.Vector3) {
-        this.#camera.position.add(vec);
+        this.#isoCamera.pan(vec);
     }
-    rotateCamera(axis: T.Vector3, radians: number) {
-        this.#camera.rotateOnAxis(axis, radians);
+    rotateCamera(angles: T.Vector2) {
+        this.#isoCamera.rotate(angles);
     }
-    cameraLookAt(vec: T.Vector3) {
-        this.#camera.lookAt(vec);
+    pointCamera(vec: T.Vector3) {
+        this.#isoCamera.changeTarget(vec);
     }
 
     // Input Control Methods

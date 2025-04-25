@@ -187,4 +187,9 @@ export default class IsometricCameraController {
         this.#rotationVertical = Math.PI / 6; // ~35.264 degrees (arctan(1/√2))
         this.update();
     }
+
+    changeTarget(newTarget: T.Vector3) {
+        this.#target.copy(newTarget);
+        this.update();
+    }
 }
