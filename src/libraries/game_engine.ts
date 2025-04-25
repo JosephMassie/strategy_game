@@ -11,9 +11,9 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import WebGL from 'three/addons/capabilities/WebGL.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+import IsometricCameraController from '@libraries/isometric_camera';
 import { msToS, vec2ToString, vec3ToString } from '@libraries/core';
 import { InputHandler } from '@libraries/input';
-import { CAMERA_SPEED } from '@/constants';
 
 type GameEngineOptions = {
     autoResize?: boolean;
@@ -38,6 +38,7 @@ export default class GameEngine {
     #outputPass: OutputPass;
 
     #camera: T.PerspectiveCamera;
+    #isoCamera: IsometricCameraController;
     #hudCamera: T.OrthographicCamera;
     #activeScene: T.Scene | null = null;
     #activeHud: T.Scene | null = null;
@@ -98,8 +99,17 @@ export default class GameEngine {
             0.1
         );
         this.#camera.position.set(20, 50, 20);
-        this.#camera.lookAt(new T.Vector3(0, 0, 0));
+        const center = new T.Vector3(0, 0, 0);
+        this.#camera.lookAt(center);
         this.#camera.layers.enable(0);
+        this.#isoCamera = new IsometricCameraController(this.#camera, {
+            target: center,
+            panSpeed: 100,
+            rotationSpeed: 2.5,
+            distance: 100,
+            minDistance: 50,
+            maxDistance: 300,
+        });
 
         const halfWinWidth = this.#winWidth / 2;
         const halfWinHeight = this.#winHeight / 2;
@@ -291,7 +301,7 @@ export default class GameEngine {
             RIGHT: 'KeyD',
             BOTTOM: 'KeyS',
         };
-        this.#orbitCtrls.keyPanSpeed = 20;
+        this.#orbitCtrls.keyPanSpeed = 80;
         this.#orbitCtrls.listenToKeyEvents(window);
     }
     getRaycaster(source: T.Vector2): T.Raycaster {
@@ -319,44 +329,16 @@ export default class GameEngine {
          * for oribt controls this must be done before it updates and the
          * keyboard controls are agnostic to its timing so we do it here
          */
-        const maxViewDist = 700;
+        /*         const maxViewDist = 1000;
         this.#camera.position.clamp(
-            new T.Vector3(-maxViewDist, 5, -maxViewDist),
+            new T.Vector3(-maxViewDist, 50, -maxViewDist),
             new T.Vector3(maxViewDist, maxViewDist, maxViewDist)
-        );
+        ); */
 
         if (this.#orbitCtrls) {
             this.#orbitCtrls.update();
         } else {
-            const directions: Array<[string, T.Vector3]> = [
-                ['w', new T.Vector3(0, 0, CAMERA_SPEED)],
-                ['s', new T.Vector3(0, 0, -CAMERA_SPEED)],
-                ['a', new T.Vector3(-CAMERA_SPEED, 0, 0)],
-                ['d', new T.Vector3(CAMERA_SPEED, 0, 0)],
-                ['ArrowUp', new T.Vector3(0, -CAMERA_SPEED, 0)],
-                ['ArrowDown', new T.Vector3(0, CAMERA_SPEED, 0)],
-            ];
-
-            let cameraVelocity = new T.Vector3(0, 0);
-            directions.forEach(([key, vec]) => {
-                if (this.#inputHandler.isKeyDown(key)) {
-                    cameraVelocity.add(vec);
-                }
-            });
-            cameraVelocity.multiplyScalar(secDt);
-            this.moveCamera(cameraVelocity);
-
-            const cameraRotateSpd = 1;
-            let cameraRotation = 0;
-            if (this.#inputHandler.isKeyDown('q')) {
-                console.log(`rotate camera left`);
-                cameraRotation += cameraRotateSpd;
-            }
-
-            if (this.#inputHandler.isKeyDown('e')) {
-                cameraRotation -= cameraRotateSpd;
-            }
-            this.rotateCamera(new T.Vector3(0, 0, 1), cameraRotation * secDt);
+            this.#isoCamera.update();
         }
 
         if (this.#inputHandler.isKeyPressed('=')) {

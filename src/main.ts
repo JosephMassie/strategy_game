@@ -25,7 +25,7 @@ const engine = new GameEngine(canvas, input, {
     debug: false,
     useShaders: false,
 });
-engine.enableOrbitCtrls();
+//engine.enableOrbitCtrls();
 
 const scene = engine.createScene();
 engine.setActiveScene(scene);
@@ -33,7 +33,7 @@ engine.setActiveScene(scene);
 const hudScene = engine.createScene();
 engine.setActiveHudScene(hudScene);
 
-const ambientLight = new T.AmbientLight(0xffffff, 2);
+const ambientLight = new T.AmbientLight(0xffffff, 1);
 scene.add(ambientLight);
 
 const rows = 100;
@@ -103,7 +103,7 @@ function gameLoop(now: number) {
                         console.log(`constructed a new mine`);
                         const mine = mineConstructor.build();
                         mine.position.copy(focusedTile.position);
-                        mine.position.y += 8;
+                        mine.position.y += 20;
                         scene.add(mine);
                         buildings.push(mine);
                     }
@@ -114,7 +114,7 @@ function gameLoop(now: number) {
                         console.log(`constructed a new farm`);
                         const farm = farmConstructor.build();
                         farm.position.copy(focusedTile.position);
-                        farm.position.y += 1;
+                        farm.position.y += 10;
                         scene.add(farm);
                         buildings.push(farm);
                     }

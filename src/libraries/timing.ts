@@ -2,6 +2,7 @@ export type Timer = {
     elapsed: number;
     duration: number;
     isDone: boolean;
+    removed?: boolean;
 };
 
 let timers: Array<Timer> = [];
@@ -30,7 +31,10 @@ export function updateTimers(deltaTime: number) {
 
     timers = timers.filter((timer) => {
         // remove all timers that have already reached their duration
-        if (timer.isDone) return false;
+        if (timer.isDone) {
+            timer.removed = true;
+            return false;
+        }
 
         timer.elapsed += deltaTime;
         // Update a timer's isDone state but don't remove it this frame
@@ -44,6 +48,11 @@ export function updateTimers(deltaTime: number) {
 export function resetTimer(timer: Timer) {
     timer.elapsed = 0;
     timer.isDone = false;
+    if (timer.removed) {
+        timer.removed = false;
+    }
+
+    timers.push(timer);
     return timer;
 }
 

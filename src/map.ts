@@ -31,9 +31,9 @@ type TerraFormOptions = {
     terraformerFactor?: number;
 };
 
-const sun = new T.DirectionalLight(0xffff44, 4);
+const sun = new T.DirectionalLight(0xffff88, 3);
 sun.castShadow = true;
-const tileSize = 12;
+let tileSize = 12;
 
 export default class LvlMap {
     #engine: GameEngine;
@@ -72,6 +72,13 @@ export default class LvlMap {
             this.#waterModel = models.water;
             this.#sandModel = models.sand;
             this.#mountainModel = models.mountain;
+
+            // update the current tile size
+            const size = new T.Vector3(0, 0, 0);
+            const box = new T.Box3().setFromObject(models.grass);
+            box.getSize(size);
+            tileSize = size.x;
+            console.log(`tile size is ${tileSize}`);
 
             for (let y = 0; y < height; y++) {
                 if (this.#tiles[y].length === 0) {

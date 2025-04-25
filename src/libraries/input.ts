@@ -24,7 +24,11 @@ let prevInputState: InputStateRecord | null = null;
 let curInputState: InputStateRecord = {};
 let inputTimers: Record<string, Timer> = {};
 
+let isInitialized = false;
+
 const mousePos = new T.Vector2(-Infinity, -Infinity);
+let mouseWheelDelta = 0;
+let scrollTimer: Timer | null = null;
 
 function processKeyPress(event: KeyboardEvent) {
     if (!event.repeat) {
@@ -47,9 +51,17 @@ function processMouseButtonRelease(event: MouseEvent) {
 function processMouseMove(event: MouseEvent) {
     mousePos.set(event.clientX, event.clientY);
 }
+function processMouseWheel(event: WheelEvent) {
+    mouseWheelDelta = event.deltaY;
+    if (!scrollTimer) {
+        scrollTimer = setTimer(INPUT_TAP_COOLDOWN);
+    } else {
+        resetTimer(scrollTimer);
+    }
+}
 
 export type InputHandler = {
-    initialize: (target: HTMLCanvasElement) => void;
+    initialize: (target?: HTMLCanvasElement) => void;
     deInitialize: () => void;
     update: () => void;
     isKeyDown: (key: string) => boolean;
@@ -60,6 +72,7 @@ export type InputHandler = {
     isMouseButtonPressed: (button: MouseButton) => boolean;
     isMouseButtonReleased: (button: MouseButton) => boolean;
     wasMouseButtonPressedButNotHeld: (button: MouseButton) => boolean;
+    getMouseWheelDelta: () => number;
     getMousePos: () => T.Vector2;
     toCanvasCoords: (
         browserScreenPos: T.Vector2,
@@ -68,12 +81,19 @@ export type InputHandler = {
 };
 
 export const input: InputHandler = {
-    initialize: (target: HTMLCanvasElement) => {
-        canvas = target;
+    initialize: (target?: HTMLCanvasElement) => {
+        if (isInitialized) return;
+        isInitialized = true;
+
+        canvas = target ?? document.querySelector('canvas') ?? null;
+        if (!canvas) {
+            throw new Error("can't initialize input handler without canvas");
+        }
         canvas.addEventListener('keydown', processKeyPress);
         canvas.addEventListener('keyup', processKeyRelease);
         canvas.addEventListener('mousedown', processMouseButtonPress);
         canvas.addEventListener('mouseup', processMouseButtonRelease);
+        canvas.addEventListener('wheel', processMouseWheel);
         window.addEventListener('mousemove', processMouseMove);
     },
 
@@ -82,6 +102,7 @@ export const input: InputHandler = {
         canvas?.removeEventListener('keyup', processKeyRelease);
         canvas?.removeEventListener('mousedown', processMouseButtonPress);
         canvas?.removeEventListener('mouseup', processMouseButtonRelease);
+        canvas?.removeEventListener('wheel', processMouseWheel);
         window.removeEventListener('mousemove', processMouseMove);
         canvas = null;
 
@@ -119,6 +140,11 @@ export const input: InputHandler = {
 
         // store the current key state as the previous state
         prevInputState = { ...curInputState };
+
+        // reset the mouse wheel delta when a user stops scrolling
+        if (scrollTimer?.isDone) {
+            mouseWheelDelta = 0;
+        }
     },
 
     isKeyDown: (key: string) => {
@@ -210,6 +236,9 @@ export const input: InputHandler = {
 
     getMousePos: () => {
         return mousePos;
+    },
+    getMouseWheelDelta: () => {
+        return mouseWheelDelta;
     },
 
     /* converts normal web browser screen coordinates
