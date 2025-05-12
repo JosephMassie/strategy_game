@@ -90,8 +90,7 @@
         "baseColorTexture": {
           "index": 0
         },
-        "metallicFactor": 0.200000003,
-        "roughnessFactor": 0.5
+        "metallicFactor": 0
       }
     }
   ],

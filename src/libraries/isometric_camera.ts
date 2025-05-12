@@ -152,7 +152,14 @@ export default class IsometricCameraController {
         });
         this.rotate(cameraRotation);
 
+        // Zoom with mouse wheel or space & shift
         let zoomDelta = Math.sign(input.getMouseWheelDelta()) * this.#zoomSpeed;
+        if (input.isKeyDown('Shift')) {
+            zoomDelta = -1 * this.#zoomSpeed;
+        }
+        if (input.isKeyDown(' ')) {
+            zoomDelta = 1 * this.#zoomSpeed;
+        }
         this.zoom(zoomDelta);
 
         // Position the camera based on spherical coordinates

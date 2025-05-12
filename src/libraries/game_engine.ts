@@ -102,8 +102,8 @@ export default class GameEngine {
         this.#camera.layers.enable(0);
         this.#isoCamera = new IsometricCameraController(this.#camera, {
             target: new T.Vector3(0, 0, 0),
-            panSpeed: 200,
-            rotationSpeed: 2.5,
+            panSpeed: 400,
+            rotationSpeed: 3,
             distance: 100,
             minDistance: 50,
             maxDistance: 300,
