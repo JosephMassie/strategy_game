@@ -61,8 +61,9 @@ const rmFontSize = 20;
 const rmLineHeight = 1.2;
 const resourceMonitor = new Text();
 resourceMonitor.font = PIXEL_FONT;
-resourceMonitor.text = `Minerals: ${getResource(ResourceTypes.MINERALS)}
-Food: ${getResource(ResourceTypes.FOOD)}`;
+resourceMonitor.text = `Minerals: ${getResource(
+    ResourceTypes.MINERALS
+)}\nFood: ${getResource(ResourceTypes.FOOD)}`;
 resourceMonitor.fontSize = rmFontSize;
 resourceMonitor.lineHeight = rmLineHeight;
 resourceMonitor.anchorX = 'left';
@@ -160,8 +161,7 @@ function gameLoop(now: number) {
     if (lastMinerals !== curMinerals || lastFood !== curFood) {
         lastMinerals = curMinerals;
         lastFood = curFood;
-        resourceMonitor.text = `Minerals: ${curMinerals}
-Food: ${curFood}`;
+        resourceMonitor.text = `Minerals: ${curMinerals}\nFood: ${curFood}`;
         resourceMonitor.sync();
     }
 
