@@ -110,7 +110,7 @@ function gameLoop(now: number) {
     input.update();
 
     if (input.isKeyPressed('Escape')) {
-        console.log('Escape pressed');
+        console.log('Escape pressed, closing game');
         isRunning = false;
     }
     engine.update(deltaTime);
@@ -123,12 +123,9 @@ function gameLoop(now: number) {
     if (input.isMouseButtonPressed(MouseButton.LEFT)) {
         const focusedTile = map.getHoveredTile();
         if (focusedTile !== null) {
-            console.log(`looking at tile: ${Terrain[focusedTile.terrain]}`);
             switch (focusedTile.terrain) {
                 case Terrain.MOUNTAIN:
-                    console.log(`attempting to construct a mine`);
                     if (mineConstructor.checkCost()) {
-                        console.log(`constructed a new mine`);
                         const mine = mineConstructor.build(
                             focusedTile.position
                         );
@@ -137,9 +134,7 @@ function gameLoop(now: number) {
                     }
                     break;
                 case Terrain.GRASS:
-                    console.log(`attempting to construct a farm`);
                     if (farmConstructor.checkCost()) {
-                        console.log(`constructed a new farm`);
                         const farm = farmConstructor.build(
                             focusedTile.position
                         );

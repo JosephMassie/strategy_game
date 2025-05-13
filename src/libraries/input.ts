@@ -161,7 +161,6 @@ export const input: InputHandler = {
     },
     wasKeyPressedButNotHeld(key: string): boolean {
         if (this.isKeyPressed(key)) {
-            console.log('button pressed');
             if (key in inputTimers) {
                 resetTimer(inputTimers[key]);
             } else {
