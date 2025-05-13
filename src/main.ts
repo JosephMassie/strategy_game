@@ -14,7 +14,8 @@ import {
 } from '@components/buildings';
 import { getResource, ResourceTypes } from './game_state';
 import { loadMesh, addFileExtension } from '@libraries/resource_loader';
-import { BUILDING_MESHES, TILE_MESHES } from './constants';
+import { BUILDING_MESHES, PIXEL_FONT, TILE_MESHES } from './constants';
+import { rm } from 'fs';
 
 const canvas = document.querySelector(
     'canvas#background'
@@ -57,10 +58,14 @@ map.addToScene();
 
 canvas.focus();
 
+const rmFontSize = 20;
+const rmLineHeight = 1.2;
 const resourceMonitor = new Text();
+resourceMonitor.font = PIXEL_FONT;
 resourceMonitor.text = `Minerals: ${getResource(ResourceTypes.MINERALS)}
 Food: ${getResource(ResourceTypes.FOOD)}`;
-resourceMonitor.fontSize = 20;
+resourceMonitor.fontSize = rmFontSize;
+resourceMonitor.lineHeight = rmLineHeight;
 resourceMonitor.anchorX = 'left';
 resourceMonitor.anchorY = 'top';
 resourceMonitor.position.set(
@@ -71,6 +76,21 @@ resourceMonitor.position.set(
 resourceMonitor.layers.set(1);
 resourceMonitor.sync();
 hudScene.add(resourceMonitor);
+
+const rmPadding = 5;
+const rmWidth = 150 + rmPadding * 2;
+const rmHeight = rmFontSize * rmLineHeight * 2 + rmPadding * 2;
+const backdrop = new T.Mesh(
+    new T.PlaneGeometry(rmWidth, rmHeight),
+    new T.MeshBasicMaterial({ color: 0x1f1f1f })
+);
+backdrop.position.set(
+    -window.innerWidth / 2 + 5 + rmWidth / 2,
+    window.innerHeight / 2 - 5 - rmHeight / 2,
+    0
+);
+backdrop.layers.set(1);
+hudScene.add(backdrop);
 
 let buildings: Array<Building> = [];
 
