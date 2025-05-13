@@ -92,6 +92,37 @@ backdrop.position.set(
 backdrop.layers.set(1);
 hudScene.add(backdrop);
 
+// controls callout
+const controlsText = new Text();
+controlsText.font = PIXEL_FONT;
+controlsText.text = `Controls:\nClick to build\nWASD to move\nQE and Arrow Keys to rotate\nSpace/Shift to zoom\n\n\nBuild MINES on mountains and FARMS on grass\nMINES costs 20 minerals\nFARMS cost 5 minerals\n builds also have an upkeep cost of 5 food`;
+controlsText.fontSize = rmFontSize;
+controlsText.lineHeight = rmLineHeight;
+controlsText.anchorX = 'left';
+controlsText.anchorY = 'bottom';
+controlsText.position.set(
+    -window.innerWidth / 2 + 10,
+    -window.innerHeight / 2 + 10,
+    0
+);
+controlsText.layers.set(1);
+controlsText.sync();
+hudScene.add(controlsText);
+
+const ccWidth = 450 + rmPadding * 2;
+const ccHeight = rmFontSize * rmLineHeight * 11 + rmPadding * 2;
+const ccbackdrop = new T.Mesh(
+    new T.PlaneGeometry(ccWidth, ccHeight),
+    new T.MeshBasicMaterial({ color: 0x1f1f1f })
+);
+ccbackdrop.position.set(
+    -window.innerWidth / 2 + 5 + ccWidth / 2,
+    -window.innerHeight / 2 + 5 + ccHeight / 2,
+    0
+);
+ccbackdrop.layers.set(1);
+hudScene.add(ccbackdrop);
+
 let buildings: Array<Building> = [];
 
 let isRunning = true;
