@@ -13,6 +13,7 @@ import {
     farmConstructor,
 } from '@components/buildings';
 import { getResource, ResourceTypes } from './game_state';
+import { loadMesh, addFileExtension } from '@libraries/resource_loader';
 
 const canvas = document.querySelector(
     'canvas#background'
@@ -25,7 +26,11 @@ const engine = new GameEngine(canvas, input, {
     debug: false,
     useShaders: false,
 });
-//engine.enableOrbitCtrls();
+
+// preload all the meshes
+['grass', 'sand', 'mountain', 'water', 'farm', 'mine'].forEach((path) => {
+    loadMesh(addFileExtension('gltf')(path));
+});
 
 const scene = engine.createScene();
 engine.setActiveScene(scene);
@@ -70,6 +75,8 @@ let buildings: Array<Building> = [];
 
 let isRunning = true;
 let lastTimeStamp: number = performance.now();
+let lastFood = getResource(ResourceTypes.FOOD);
+let lastMinerals = getResource(ResourceTypes.MINERALS);
 function gameLoop(now: number) {
     if (!isRunning) return;
 
@@ -101,10 +108,10 @@ function gameLoop(now: number) {
                     console.log(`attempting to construct a mine`);
                     if (mineConstructor.checkCost()) {
                         console.log(`constructed a new mine`);
-                        const mine = mineConstructor.build();
-                        mine.position.copy(focusedTile.position);
-                        mine.position.y += 20;
-                        scene.add(mine);
+                        const mine = mineConstructor.build(
+                            focusedTile.position
+                        );
+                        mine.addToScene(scene);
                         buildings.push(mine);
                     }
                     break;
@@ -112,10 +119,10 @@ function gameLoop(now: number) {
                     console.log(`attempting to construct a farm`);
                     if (farmConstructor.checkCost()) {
                         console.log(`constructed a new farm`);
-                        const farm = farmConstructor.build();
-                        farm.position.copy(focusedTile.position);
-                        farm.position.y += 10;
-                        scene.add(farm);
+                        const farm = farmConstructor.build(
+                            focusedTile.position
+                        );
+                        farm.addToScene(scene);
                         buildings.push(farm);
                     }
                     break;
@@ -128,9 +135,15 @@ function gameLoop(now: number) {
         }
     }
 
-    resourceMonitor.text = `Minerals: ${getResource(ResourceTypes.MINERALS)}
-Food: ${getResource(ResourceTypes.FOOD)}`;
-    resourceMonitor.sync();
+    const curMinerals = getResource(ResourceTypes.MINERALS);
+    const curFood = getResource(ResourceTypes.FOOD);
+    if (lastMinerals !== curMinerals || lastFood !== curFood) {
+        lastMinerals = curMinerals;
+        lastFood = curFood;
+        resourceMonitor.text = `Minerals: ${curMinerals}
+Food: ${curFood}`;
+        resourceMonitor.sync();
+    }
 
     engine.render(deltaTime);
 

@@ -3,6 +3,7 @@ import * as T from 'three';
 import { Timer, resetTimer, setTimer } from '@libraries/timing';
 import { ResourceTypes, addResource, getResource } from '@/game_state';
 import { Terrain } from '@/map';
+import { loadMesh } from '@/libraries/resource_loader';
 
 type ResourceList = Array<[ResourceTypes, number]>;
 
@@ -16,16 +17,18 @@ type BuildingConstructor = {
     checkCost: () => boolean;
     // Subtract the cost of the building from the player's resources and
     // return a new instance of the building
-    build: () => Building;
+    build: (position: T.Vector3) => Building;
 };
 
-export abstract class Building extends T.Mesh {
+export abstract class Building {
     protected incomeTimer: Timer;
     protected income: ResourceList = [[ResourceTypes.MINERALS, 0]];
     protected speed: number = 1000;
+    protected mesh: T.Mesh;
 
-    constructor(geometry: T.BufferGeometry, material: T.Material) {
-        super(geometry, material);
+    constructor(mesh: T.Mesh, position: T.Vector3) {
+        this.mesh = mesh;
+        this.mesh.position.copy(position);
 
         this.incomeTimer = setTimer(this.speed);
     }
@@ -34,6 +37,9 @@ export abstract class Building extends T.Mesh {
             resetTimer(this.incomeTimer);
             updateResources(this.income);
         }
+    }
+    addToScene(scene: T.Scene) {
+        scene.add(this.mesh);
     }
 }
 
@@ -47,9 +53,6 @@ const updateResources = (costs: ResourceList, modifier: number = 1) => {
 };
 
 // Mines
-const mineGeometry = new T.BoxGeometry(4, 8.25, 3.5);
-const mineMaterial = new T.MeshBasicMaterial({ color: 0x040404 });
-const mineInactiveMaterial = new T.MeshBasicMaterial({ color: 0x888888 });
 
 export const mineConstructor: BuildingConstructor = {
     cost: [[ResourceTypes.MINERALS, 20]],
@@ -57,17 +60,32 @@ export const mineConstructor: BuildingConstructor = {
     checkCost() {
         return checkCost(this.cost);
     },
-    build() {
+    build(position: T.Vector3) {
         updateResources(this.cost, -1);
-        return new Mine();
+        return new Mine(position);
     },
 };
 
 export class Mine extends Building {
     #isProcessing = false;
     #upkeepCost: ResourceList = [[ResourceTypes.FOOD, 5]];
-    constructor() {
-        super(mineGeometry, mineMaterial);
+
+    constructor(position: T.Vector3) {
+        super(
+            new T.Mesh(
+                new T.BoxGeometry(10, 10, 10),
+                new T.MeshBasicMaterial({ color: 0x00ff00 })
+            ),
+            position
+        );
+
+        loadMesh('/mine.gltf').then((model) => {
+            const scene = this.mesh.parent;
+            scene?.remove(this.mesh);
+            this.mesh = model.clone();
+            scene?.add(this.mesh);
+            this.mesh.position.copy(position);
+        });
 
         this.income = [[ResourceTypes.MINERALS, 10]];
     }
@@ -78,18 +96,10 @@ export class Mine extends Building {
             if (this.#isProcessing) {
                 this.#isProcessing = false;
                 super.update();
-
-                if (!checkCost(this.#upkeepCost)) {
-                    this.material = mineInactiveMaterial;
-                }
             } else {
                 if (checkCost(this.#upkeepCost)) {
                     this.#isProcessing = true;
                     updateResources(this.#upkeepCost, -1);
-                    this.material = mineMaterial;
-                } else {
-                    // If the player doesn't have enough food, set the mine to inactive
-                    this.material = mineInactiveMaterial;
                 }
                 resetTimer(this.incomeTimer);
             }
@@ -107,15 +117,23 @@ export const farmConstructor: BuildingConstructor = {
     checkCost() {
         return checkCost(this.cost);
     },
-    build() {
+    build(position: T.Vector3) {
         updateResources(this.cost, -1);
-        return new Farm();
+        return new Farm(position);
     },
 };
 
 export class Farm extends Building {
-    constructor() {
-        super(farmGeometry, farmMaterial);
+    constructor(position: T.Vector3) {
+        super(new T.Mesh(farmGeometry, farmMaterial), position);
+
+        loadMesh('/farm.gltf').then((model) => {
+            const scene = this.mesh.parent;
+            scene?.remove(this.mesh);
+            this.mesh = model.clone();
+            scene?.add(this.mesh);
+            this.mesh.position.copy(position);
+        });
 
         this.income = [[ResourceTypes.FOOD, 1]];
     }

@@ -2,6 +2,7 @@ import * as T from 'three';
 
 import { randInt } from '@libraries/core';
 import GameEngine from '@libraries/game_engine';
+import { loadMesh, addFileExtension } from '@libraries/resource_loader';
 
 type MapCoords = [x: number, y: number];
 
@@ -35,6 +36,14 @@ const sun = new T.DirectionalLight(0xffffff, 2);
 sun.castShadow = true;
 let tileSize = 12;
 
+const PLACEHOLDER_GEOMETRY = new T.PlaneGeometry(tileSize, tileSize);
+const PLACEHOLDER_MATERIALS = {
+    [Terrain.GRASS]: new T.MeshBasicMaterial({ color: 0x00ff00 }),
+    [Terrain.WATER]: new T.MeshBasicMaterial({ color: 0x0000ff }),
+    [Terrain.SAND]: new T.MeshBasicMaterial({ color: 0xffff00 }),
+    [Terrain.MOUNTAIN]: new T.MeshBasicMaterial({ color: 0x808080 }),
+};
+
 export default class LvlMap {
     #engine: GameEngine;
 
@@ -59,70 +68,65 @@ export default class LvlMap {
         console.log(`generating ${width}x${height} map`);
 
         this.#engine = engine;
-
         this.#width = width;
         this.#height = height;
         this.#tiles = Array(height).fill([]);
 
         sun.position.set(50, 60, 50);
 
-        this.#modelPromise = this.#loadModels().then((models) => {
-            console.log(`all map tile models loaded`);
-            this.#grassModel = models.grass;
-            this.#waterModel = models.water;
-            this.#sandModel = models.sand;
-            this.#mountainModel = models.mountain;
-
-            // update the current tile size
-            const size = new T.Vector3(0, 0, 0);
-            const box = new T.Box3().setFromObject(models.grass);
-            box.getSize(size);
-            tileSize = size.x;
-            console.log(`tile size is ${tileSize}`);
-
-            for (let y = 0; y < height; y++) {
-                if (this.#tiles[y].length === 0) {
-                    this.#tiles[y] = Array(width).fill(null);
-                }
-
-                for (let x = 0; x < width; x++) {
-                    if (this.#tiles[y][x] === null) {
-                        const position = new T.Vector3(
-                            x * tileSize,
-                            0,
-                            y * tileSize
-                        );
-                        position.add(startPos);
-                        const mesh = this.#grassModel?.clone() ?? null;
-                        mesh?.position.copy(position);
-
-                        this.#tiles[y][x] = {
-                            terrain: Terrain.GRASS,
-                            mesh,
-                            position,
-                        };
-                    }
-                }
+        // Initialize map with placeholder tiles
+        for (let y = 0; y < height; y++) {
+            if (this.#tiles[y].length === 0) {
+                this.#tiles[y] = Array(width).fill(null);
             }
 
-            console.log(`raising mountains`);
-            this.#terraForm(Terrain.MOUNTAIN, { percentCoverage: 0.15 });
+            for (let x = 0; x < width; x++) {
+                if (this.#tiles[y][x] === null) {
+                    const position = new T.Vector3(
+                        x * tileSize,
+                        0,
+                        y * tileSize
+                    );
+                    position.add(startPos);
+                    const mesh = new T.Mesh(
+                        PLACEHOLDER_GEOMETRY,
+                        PLACEHOLDER_MATERIALS[Terrain.GRASS]
+                    );
+                    mesh.rotateX(-Math.PI / 2); // Rotate plane to be horizontal
+                    mesh.position.copy(position);
 
-            console.log(`adding in water`);
-            this.#terraForm(Terrain.WATER, { percentCoverage: 0.2 });
+                    this.#tiles[y][x] = {
+                        terrain: Terrain.GRASS,
+                        mesh,
+                        position,
+                    };
+                }
+            }
+        }
 
-            console.log(`laying down sand`);
-            this.#terraForm(Terrain.SAND, { percentCoverage: 0.1 });
-
-            return models;
+        // Start loading actual models
+        this.#modelPromise = this.#loadModels();
+        this.#modelPromise.then(() => {
+            this.#initializeModels();
         });
+
+        console.log(`raising mountains`);
+        this.#terraForm(Terrain.MOUNTAIN, { percentCoverage: 0.15 });
+
+        console.log(`adding in water`);
+        this.#terraForm(Terrain.WATER, { percentCoverage: 0.2 });
+
+        console.log(`laying down sand`);
+        this.#terraForm(Terrain.SAND, { percentCoverage: 0.1 });
     }
 
     async #loadModels(): Promise<Record<string, T.Mesh>> {
-        const grass = await this.#engine.loadModelPromise('/grass.gltf');
-        const water = await this.#engine.loadModelPromise('/water.gltf');
-        const sand = await this.#engine.loadModelPromise('/sand.gltf');
-        const mountain = await this.#engine.loadModelPromise('/mountain.gltf');
+        const extend = addFileExtension('gltf');
+
+        const grass = await loadMesh(extend('grass'));
+        const water = await loadMesh(extend('water'));
+        const sand = await loadMesh(extend('sand'));
+        const mountain = await loadMesh(extend('mountain'));
 
         return {
             grass,
@@ -130,6 +134,74 @@ export default class LvlMap {
             sand,
             mountain,
         };
+    }
+
+    async #initializeModels() {
+        try {
+            const models = await this.#modelPromise;
+            console.log('all map tile models loaded');
+
+            this.#grassModel = models.grass;
+            this.#waterModel = models.water;
+            this.#sandModel = models.sand;
+            this.#mountainModel = models.mountain;
+
+            // Update the tile size based on the loaded model
+            const size = new T.Vector3(0, 0, 0);
+            const box = new T.Box3().setFromObject(models.grass);
+            box.getSize(size);
+            const oldTileSize = tileSize;
+            tileSize = size.x;
+            console.log(`tile size is ${tileSize}`);
+
+            // Replace placeholder meshes with actual models
+            this.#tiles.flat().forEach((tile) => {
+                if (!tile.mesh) return;
+
+                const scene = tile.mesh.parent;
+                if (!scene) return;
+
+                scene.remove(tile.mesh);
+                tile.mesh.geometry.dispose();
+                if (Array.isArray(tile.mesh.material)) {
+                    tile.mesh.material.forEach((material) => {
+                        material.dispose();
+                    });
+                } else {
+                    tile.mesh.material.dispose();
+                }
+
+                let newMesh: T.Mesh | null = null;
+                switch (tile.terrain) {
+                    case Terrain.GRASS:
+                        newMesh = this.#grassModel?.clone() ?? null;
+                        break;
+                    case Terrain.WATER:
+                        newMesh = this.#waterModel?.clone() ?? null;
+                        break;
+                    case Terrain.SAND:
+                        newMesh = this.#sandModel?.clone() ?? null;
+                        break;
+                    case Terrain.MOUNTAIN:
+                        newMesh = this.#mountainModel?.clone() ?? null;
+                        break;
+                }
+
+                if (newMesh) {
+                    // reposition tile based on the new tile size
+                    const newPos = tile.position
+                        .clone()
+                        .divideScalar(oldTileSize);
+                    newPos.multiplyScalar(tileSize);
+                    newMesh.position.copy(newPos);
+                    scene.add(newMesh);
+                    tile.mesh = newMesh;
+                    tile.position.copy(newPos);
+                }
+            });
+        } catch (err) {
+            console.error('Failed to load tile models:', err);
+        }
     }
 
     // All base tile manipulation methods
@@ -169,25 +241,41 @@ export default class LvlMap {
 
     // All terrain generation methods
     changeTileType(tile: Tile, type: Terrain) {
-        // change tille type
+        let newMesh: T.Mesh | null = null;
+
+        // Try to use actual model if available
         switch (type) {
             case Terrain.GRASS:
-                tile.mesh = this.#grassModel!.clone();
+                newMesh = this.#grassModel?.clone() ?? null;
                 break;
             case Terrain.MOUNTAIN:
-                tile.mesh = this.#mountainModel!.clone();
+                newMesh = this.#mountainModel?.clone() ?? null;
                 break;
             case Terrain.WATER:
-                tile.mesh = this.#waterModel!.clone();
+                newMesh = this.#waterModel?.clone() ?? null;
                 break;
             case Terrain.SAND:
-                tile.mesh = this.#sandModel!.clone();
+                newMesh = this.#sandModel?.clone() ?? null;
                 break;
-            default:
-                console.error(`invalid material to terraform`);
         }
+
+        // If no model is available, use placeholder
+        if (!newMesh) {
+            newMesh = new T.Mesh(
+                PLACEHOLDER_GEOMETRY,
+                PLACEHOLDER_MATERIALS[type]
+            );
+            newMesh.rotateX(-Math.PI / 2);
+        }
+
+        if (tile.mesh?.parent) {
+            tile.mesh.parent.remove(tile.mesh);
+            tile.mesh.parent.add(newMesh);
+        }
+
         tile.terrain = type;
-        tile.mesh?.position.copy(tile.position);
+        tile.mesh = newMesh;
+        tile.mesh.position.copy(tile.position);
     }
     #isTerraformerPosValid(former: TerraFormer): boolean {
         return !(

@@ -1,11 +1,11 @@
 export type Timer = {
+    id: string;
     elapsed: number;
     duration: number;
     isDone: boolean;
-    removed?: boolean;
 };
 
-let timers: Array<Timer> = [];
+let timers = new Map<string, Timer>();
 
 /* Sets a timer for the given duration in milliseconds
  * and returns a reference to the timer object.
@@ -14,11 +14,14 @@ let timers: Array<Timer> = [];
  */
 export function setTimer(duration: number) {
     const timer: Timer = {
+        id: crypto.randomUUID(),
         elapsed: 0,
         duration,
         isDone: false,
     };
-    timers.push(timer);
+
+    timers.set(timer.id, timer);
+
     return timer;
 }
 
@@ -27,43 +30,40 @@ export function setTimer(duration: number) {
  * This should be the first update call in the game loop
  */
 export function updateTimers(deltaTime: number) {
-    if (timers.length === 0) return;
+    if (timers.size === 0) return;
 
-    timers = timers.filter((timer) => {
+    timers.forEach((timer) => {
         // remove all timers that have already reached their duration
-        if (timer.isDone) {
-            timer.removed = true;
-            return false;
+        if (!timer.isDone) {
+            timer.elapsed += deltaTime;
+            // Update a timer's isDone state but don't remove it this frame
+            if (timer.elapsed >= timer.duration) {
+                timer.isDone = true;
+            }
         }
-
-        timer.elapsed += deltaTime;
-        // Update a timer's isDone state but don't remove it this frame
-        if (timer.elapsed >= timer.duration) {
-            timer.isDone = true;
-        }
-        return true;
     });
 }
 
 export function resetTimer(timer: Timer) {
     timer.elapsed = 0;
     timer.isDone = false;
-    if (timer.removed) {
-        timer.removed = false;
-    }
 
-    timers.push(timer);
     return timer;
 }
 
 export function removeTimer(timer: Timer) {
-    timers = timers.filter((t) => t !== timer);
+    if (timers.has(timer.id)) {
+        timers.delete(timer.id);
+    } else {
+        console.warn(`Timer with id ${timer.id} not found`);
+    }
 }
 
 window.checkTimers = () => {
-    timers.forEach((timer, i) => {
+    console.log(`checking timers: ${timers.size}`);
+    timers.forEach((timer) => {
         console.log(
-            `Timer[${i}]: ${timer.elapsed}/${timer.duration} - ${timer.isDone}`
+            `Timer[${timer.id}]: ${timer.elapsed}/${timer.duration} - ${timer.isDone}`
         );
     });
 };
