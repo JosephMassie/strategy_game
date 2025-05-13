@@ -15,7 +15,6 @@ import {
 import { getResource, ResourceTypes } from './game_state';
 import { loadMesh, addFileExtension } from '@libraries/resource_loader';
 import { BUILDING_MESHES, PIXEL_FONT, TILE_MESHES } from './constants';
-import { rm } from 'fs';
 
 const canvas = document.querySelector(
     'canvas#background'
