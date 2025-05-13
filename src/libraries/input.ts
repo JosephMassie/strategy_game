@@ -1,7 +1,7 @@
 import * as T from 'three';
 
 import { INPUT_TAP_COOLDOWN } from '@/constants';
-import { Timer, removeTimer, resetTimer, setTimer } from '@libraries/timing';
+import { Timer, removeTimer, setTimer } from '@libraries/timing';
 
 export enum MouseButton {
     LEFT = 0,
@@ -56,7 +56,7 @@ function processMouseWheel(event: WheelEvent) {
     if (!scrollTimer) {
         scrollTimer = setTimer(INPUT_TAP_COOLDOWN);
     } else {
-        resetTimer(scrollTimer);
+        scrollTimer.reset();
     }
 }
 
@@ -162,7 +162,7 @@ export const input: InputHandler = {
     wasKeyPressedButNotHeld(key: string): boolean {
         if (this.isKeyPressed(key)) {
             if (key in inputTimers) {
-                resetTimer(inputTimers[key]);
+                inputTimers[key].reset();
             } else {
                 inputTimers[key] = setTimer(INPUT_TAP_COOLDOWN);
             }
@@ -182,7 +182,7 @@ export const input: InputHandler = {
 
         if (key in inputTimers) {
             const timer = inputTimers[key];
-            if (timer.isDone) {
+            if (timer.isDone()) {
                 delete inputTimers[key];
                 return !this.isKeyDown(key);
             }
@@ -206,7 +206,7 @@ export const input: InputHandler = {
     wasMouseButtonPressedButNotHeld(button: MouseButton): boolean {
         if (this.isMouseButtonPressed(button)) {
             if (button in inputTimers) {
-                resetTimer(inputTimers[button]);
+                inputTimers[button].reset();
             } else {
                 inputTimers[button] = setTimer(INPUT_TAP_COOLDOWN);
             }
@@ -224,7 +224,8 @@ export const input: InputHandler = {
 
         if (button in inputTimers) {
             const timer = inputTimers[button];
-            if (timer.isDone) {
+            if (timer.isDone()) {
+                removeTimer(timer);
                 delete inputTimers[button];
                 return !this.isMouseButtonDown(button);
             }

@@ -1,6 +1,6 @@
 import * as T from 'three';
 
-import { Timer, resetTimer, setTimer } from '@libraries/timing';
+import { Timer, setTimer } from '@libraries/timing';
 import { ResourceTypes, addResource, getResource } from '@/game_state';
 import { Terrain } from '@/map';
 import { loadMesh } from '@/libraries/resource_loader';
@@ -23,23 +23,76 @@ type BuildingConstructor = {
 export abstract class Building {
     protected incomeTimer: Timer;
     protected income: ResourceList = [[ResourceTypes.MINERALS, 0]];
-    protected speed: number = 1000;
+    protected speed: number = 1500;
     protected mesh: T.Mesh;
+    protected isActive: boolean = true;
 
     constructor(mesh: T.Mesh, position: T.Vector3) {
         this.mesh = mesh;
         this.mesh.position.copy(position);
 
+        // Make sure all building materials support transparency
+        if (Array.isArray(this.mesh.material)) {
+            this.mesh.material.forEach((mat) => {
+                mat.transparent = true;
+                mat.opacity = 1.0;
+            });
+        } else {
+            this.mesh.material.transparent = true;
+            this.mesh.material.opacity = 1.0;
+        }
+
         this.incomeTimer = setTimer(this.speed);
     }
     update() {
-        if (this.incomeTimer.isDone) {
-            resetTimer(this.incomeTimer);
+        if (this.incomeTimer.isDone()) {
+            this.incomeTimer.reset();
             updateResources(this.income);
         }
     }
     addToScene(scene: T.Scene) {
         scene.add(this.mesh);
+    }
+
+    protected changeMesh(newMesh: T.Mesh) {
+        const position = this.mesh.position.clone();
+
+        const scene = this.mesh.parent;
+        scene?.remove(this.mesh);
+
+        // Clone the mesh but keep material references
+        this.mesh = newMesh.clone();
+
+        // Add a uniform to each material without cloning them
+        this.mesh.traverse((child) => {
+            if ((child as T.Mesh).isMesh) {
+                const mesh = child as T.Mesh;
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach((mat) => {
+                        mat.transparent = true;
+                        // Add onBeforeRender to handle opacity per instance
+                        mesh.onBeforeRender = (_, __, ___, ____, material) => {
+                            material.opacity = this.isActive ? 1.0 : 0.5;
+                        };
+                    });
+                } else if (mesh.material) {
+                    mesh.material.transparent = true;
+                    // Add onBeforeRender to handle opacity per instance
+                    mesh.onBeforeRender = (_, __, ___, ____, material) => {
+                        material.opacity = this.isActive ? 1.0 : 0.5;
+                    };
+                }
+            }
+        });
+
+        scene?.add(this.mesh);
+        this.mesh.position.copy(position);
+    }
+
+    protected setActive(active: boolean) {
+        this.isActive = active;
+        // No need to traverse and set opacity directly
+        // The onBeforeRender callback will handle it
     }
 }
 
@@ -79,20 +132,14 @@ export class Mine extends Building {
             position
         );
 
-        loadMesh('/mine.gltf').then((model) => {
-            const scene = this.mesh.parent;
-            scene?.remove(this.mesh);
-            this.mesh = model.clone();
-            scene?.add(this.mesh);
-            this.mesh.position.copy(position);
-        });
+        loadMesh('/mine.gltf').then(this.changeMesh.bind(this));
 
         this.income = [[ResourceTypes.MINERALS, 10]];
     }
 
     update(): void {
         // Only update income if the player has enough food to maintain the mine
-        if (this.incomeTimer.isDone) {
+        if (this.incomeTimer.isDone()) {
             if (this.#isProcessing) {
                 this.#isProcessing = false;
                 super.update();
@@ -100,8 +147,11 @@ export class Mine extends Building {
                 if (checkCost(this.#upkeepCost)) {
                     this.#isProcessing = true;
                     updateResources(this.#upkeepCost, -1);
+                    this.setActive(true);
+                } else {
+                    this.setActive(false);
                 }
-                resetTimer(this.incomeTimer);
+                this.incomeTimer.reset();
             }
         }
     }
@@ -127,13 +177,7 @@ export class Farm extends Building {
     constructor(position: T.Vector3) {
         super(new T.Mesh(farmGeometry, farmMaterial), position);
 
-        loadMesh('/farm.gltf').then((model) => {
-            const scene = this.mesh.parent;
-            scene?.remove(this.mesh);
-            this.mesh = model.clone();
-            scene?.add(this.mesh);
-            this.mesh.position.copy(position);
-        });
+        loadMesh('/farm.gltf').then(this.changeMesh.bind(this));
 
         this.income = [[ResourceTypes.FOOD, 1]];
     }

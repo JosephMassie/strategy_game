@@ -1,9 +1,50 @@
 export type Timer = {
-    id: string;
-    elapsed: number;
-    duration: number;
-    isDone: boolean;
+    reset: () => void;
+    getId: () => string;
+    isDone: () => boolean;
+    update: (deltaTime: number) => void;
 };
+
+class TimerClass implements Timer {
+    private id: string;
+    private elapsed: number = 0;
+    private duration: number;
+    private active: boolean = true;
+
+    constructor(duration: number) {
+        this.id = crypto.randomUUID();
+        this.duration = duration;
+    }
+
+    reset() {
+        this.elapsed = 0;
+        this.active = true;
+    }
+
+    update(deltaTime: number) {
+        if (!this.active) return;
+
+        this.elapsed += deltaTime;
+
+        if (this.elapsed >= this.duration) {
+            this.active = false;
+        }
+    }
+
+    getId() {
+        return this.id;
+    }
+
+    isDone() {
+        return !this.active;
+    }
+
+    toString() {
+        return `Timer[${this.id}]: ${this.elapsed}/${
+            this.duration
+        } - ${this.isDone()}`;
+    }
+}
 
 let timers = new Map<string, Timer>();
 
@@ -13,14 +54,9 @@ let timers = new Map<string, Timer>();
  * and handled by the updateTimers function.
  */
 export function setTimer(duration: number) {
-    const timer: Timer = {
-        id: crypto.randomUUID(),
-        elapsed: 0,
-        duration,
-        isDone: false,
-    };
+    const timer = new TimerClass(duration);
 
-    timers.set(timer.id, timer);
+    timers.set(timer.getId(), timer);
 
     return timer;
 }
@@ -33,37 +69,24 @@ export function updateTimers(deltaTime: number) {
     if (timers.size === 0) return;
 
     timers.forEach((timer) => {
-        // remove all timers that have already reached their duration
-        if (!timer.isDone) {
-            timer.elapsed += deltaTime;
-            // Update a timer's isDone state but don't remove it this frame
-            if (timer.elapsed >= timer.duration) {
-                timer.isDone = true;
-            }
-        }
+        timer.update(deltaTime);
     });
 }
 
-export function resetTimer(timer: Timer) {
-    timer.elapsed = 0;
-    timer.isDone = false;
-
-    return timer;
-}
-
-export function removeTimer(timer: Timer) {
-    if (timers.has(timer.id)) {
-        timers.delete(timer.id);
-    } else {
-        console.warn(`Timer with id ${timer.id} not found`);
+export function removeTimer(timer: Timer): boolean {
+    const id = timer.getId();
+    if (!timers.has(id)) {
+        console.warn(`Timer with id ${id} not found`);
+        return false;
     }
+
+    timers.delete(id);
+    return true;
 }
 
 window.checkTimers = () => {
     console.log(`checking timers: ${timers.size}`);
     timers.forEach((timer) => {
-        console.log(
-            `Timer[${timer.id}]: ${timer.elapsed}/${timer.duration} - ${timer.isDone}`
-        );
+        console.log(timer.toString());
     });
 };
