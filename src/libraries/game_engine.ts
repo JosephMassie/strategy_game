@@ -94,9 +94,10 @@ export default class GameEngine {
         this.#composer.addPass(this.#outputPass);
 
         this.#camera = new T.PerspectiveCamera(
-            90,
+            75,
             this.#winWidth / this.#winHeight,
-            0.1
+            0.1,
+            500
         );
 
         this.#camera.layers.enable(0);
@@ -106,8 +107,10 @@ export default class GameEngine {
             rotationSpeed: 3,
             distance: 100,
             minDistance: 50,
-            maxDistance: 300,
+            maxDistance: 200,
             rotationHorizontal: Math.PI / -4,
+            minVerticalRotation: Math.PI / 8,
+            maxVerticalRotation: Math.PI / 4,
         });
 
         const halfWinWidth = this.#winWidth / 2;

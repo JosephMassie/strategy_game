@@ -14,6 +14,7 @@ import {
 } from '@components/buildings';
 import { getResource, ResourceTypes } from './game_state';
 import { loadMesh, addFileExtension } from '@libraries/resource_loader';
+import { BUILDING_MESHES, TILE_MESHES } from './constants';
 
 const canvas = document.querySelector(
     'canvas#background'
@@ -28,7 +29,7 @@ const engine = new GameEngine(canvas, input, {
 });
 
 // preload all the meshes
-['grass', 'sand', 'mountain', 'water', 'farm', 'mine'].forEach((path) => {
+[...TILE_MESHES, ...BUILDING_MESHES].forEach((path) => {
     loadMesh(addFileExtension('gltf')(path));
 });
 

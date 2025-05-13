@@ -139,7 +139,9 @@ export default class IsometricCameraController {
 
         const rotationDirections: Array<[string, T.Vector2]> = [
             ['q', new T.Vector2(-1, 0)],
+            ['ArrowLeft', new T.Vector2(-1, 0)],
             ['e', new T.Vector2(1, 0)],
+            ['ArrowRight', new T.Vector2(1, 0)],
             ['ArrowUp', new T.Vector2(0, 1)],
             ['ArrowDown', new T.Vector2(0, -1)],
         ];
