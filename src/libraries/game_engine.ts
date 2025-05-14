@@ -13,7 +13,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import IsometricCameraController from '@libraries/isometric_camera';
 import { msToS, vec2ToString, vec3ToString } from '@libraries/core';
-import { InputHandler } from '@libraries/input';
+import { input } from '@libraries/input';
 
 type GameEngineOptions = {
     autoResize?: boolean;
@@ -24,7 +24,27 @@ type GameEngineOptions = {
 
 const gltfLoader = new GLTFLoader();
 
-export default class GameEngine {
+let engine: GameEngine;
+
+export default function getGameEngine(
+    canvas?: HTMLCanvasElement,
+    opts: GameEngineOptions = {}
+): GameEngine {
+    if (engine === undefined) {
+        console.log('game engine not yet initialized, initializing');
+        if (canvas === undefined) {
+            throw new Error(
+                `failed to initialize game engine no canvas provided`
+            );
+        }
+
+        engine = new GameEngine(canvas, opts);
+    }
+
+    return engine;
+}
+
+export class GameEngine {
     #debug = false;
 
     #renderer: T.WebGLRenderer;
@@ -32,7 +52,6 @@ export default class GameEngine {
     // All shader related variables
     #useShaders: boolean;
     #composer: EffectComposer;
-    #inputHandler: InputHandler;
     #mainRenderPass: RenderPass | null = null;
     #hudRenderPass: RenderPass | null = null;
     #outputPass: OutputPass;
@@ -57,11 +76,7 @@ export default class GameEngine {
     #frameTimeHistory: number[] = [];
     #fpsCounter: Text | null = null;
 
-    constructor(
-        canvas: HTMLCanvasElement,
-        inputHandler: InputHandler,
-        options?: GameEngineOptions
-    ) {
+    constructor(canvas: HTMLCanvasElement, options?: GameEngineOptions) {
         const {
             autoResize = true,
             displayFps = false,
@@ -71,8 +86,6 @@ export default class GameEngine {
 
         this.#debug = debug;
         this.#useShaders = useShaders;
-
-        this.#inputHandler = inputHandler;
 
         if (!WebGL.isWebGL2Available()) {
             const warning = WebGL.getWebGL2ErrorMessage();
@@ -312,9 +325,7 @@ export default class GameEngine {
         return caster;
     }
     getMouseRaycaster(): T.Raycaster {
-        const mousePos = this.#inputHandler.toCanvasCoords(
-            this.#inputHandler.getMousePos()
-        );
+        const mousePos = input.toCanvasCoords(input.getMousePos());
         return this.getRaycaster(mousePos);
     }
 
@@ -341,16 +352,13 @@ export default class GameEngine {
             this.#isoCamera.update();
         }
 
-        if (this.#inputHandler.isKeyPressed('=')) {
+        if (input.isKeyPressed('=')) {
             console.log(`activate fps counter`);
             this.showFpsCounter();
         }
 
-        const mousePos = this.#inputHandler.getMousePos();
-        const mouseWorldPos = this.#inputHandler.toCanvasCoords(
-            mousePos,
-            false
-        );
+        const mousePos = input.getMousePos();
+        const mouseWorldPos = input.toCanvasCoords(mousePos, false);
         if (this.#displayFps && this.#fpsCounter !== null) {
             this.#fpsCounter.text = `fps: ${this.#fps.toFixed(
                 2

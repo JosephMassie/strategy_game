@@ -1,5 +1,10 @@
 import * as T from 'three';
 
+type PreloadFontOptions = {
+    font: string;
+    characters: string;
+};
+
 declare module 'troika-three-text' {
     export class Text extends T.Object3D {
         font: string;
@@ -11,6 +16,12 @@ declare module 'troika-three-text' {
         textAlign: string;
         textIndent: number;
         lineHeight: number;
+        letterSpacing: number;
         sync(): void;
+        dispose(): void;
     }
+    export function preloadFont(
+        opts: PreloadFontOptions,
+        callback?: () => void
+    );
 }

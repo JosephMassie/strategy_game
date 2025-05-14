@@ -1,9 +1,9 @@
 import './style.css';
 
 import * as T from 'three';
-import { Text } from 'troika-three-text';
+import { preloadFont } from 'troika-three-text';
 
-import GameEngine from '@libraries/game_engine';
+import getGameEngine from '@libraries/game_engine';
 import LvlMap, { Terrain } from './map';
 import { input, MouseButton } from '@libraries/input';
 import { updateTimers } from '@libraries/timing';
@@ -15,6 +15,7 @@ import {
 import { getResource, ResourceTypes } from './game_state';
 import { loadMesh, addFileExtension } from '@libraries/resource_loader';
 import { BUILDING_MESHES, PIXEL_FONT, TILE_MESHES } from './constants';
+import TextBox from './components/ui_textbox';
 
 const canvas = document.querySelector(
     'canvas#background'
@@ -22,15 +23,31 @@ const canvas = document.querySelector(
 
 input.initialize(canvas);
 
-const engine = new GameEngine(canvas, input, {
+const engine = getGameEngine(canvas, {
     autoResize: true,
     debug: false,
     useShaders: false,
 });
 
 // preload all the meshes
-const loadingResources = [...TILE_MESHES, ...BUILDING_MESHES].map((path) =>
-    loadMesh(addFileExtension('gltf')(path))
+const loadingResources: Array<Promise<any>> = [
+    ...TILE_MESHES,
+    ...BUILDING_MESHES,
+].map((path) => loadMesh(addFileExtension('gltf')(path)));
+
+loadingResources.push(
+    new Promise((resolve) => {
+        preloadFont(
+            {
+                font: PIXEL_FONT,
+                characters: '1234567890abcdefghijklmnopqrstuvwxyz',
+            },
+            () => {
+                console.log(`finished preloading font ${PIXEL_FONT}`);
+                resolve('font loaded');
+            }
+        );
+    })
 );
 
 const scene = engine.createScene();
@@ -47,88 +64,47 @@ const columns = rows;
 const tileSize = 12;
 const width = rows * tileSize;
 
-const map = new LvlMap(
-    engine,
-    rows,
-    columns,
-    new T.Vector3(-width / 2, 0, -width / 2)
-);
+const map = new LvlMap(rows, columns, new T.Vector3(-width / 2, 0, -width / 2));
 map.addToScene();
 
 canvas.focus();
 
-const rmFontSize = 24;
-const rmLineHeight = 1.2;
-const resourceMonitor = new Text();
-resourceMonitor.font = PIXEL_FONT;
-resourceMonitor.text = `Minerals: ${getResource(
-    ResourceTypes.MINERALS
-)}\nFood: ${getResource(ResourceTypes.FOOD)}`;
-resourceMonitor.fontSize = rmFontSize;
-resourceMonitor.lineHeight = rmLineHeight;
-resourceMonitor.anchorX = 'left';
-resourceMonitor.anchorY = 'top';
-resourceMonitor.position.set(
-    -window.innerWidth / 2 + 10,
-    window.innerHeight / 2 - 10,
-    0
+const resourceMonitor = new TextBox(
+    `Minerals: ${getResource(ResourceTypes.MINERALS)}\nFood: ${getResource(
+        ResourceTypes.FOOD
+    )}`,
+    new T.Vector2(-0.98, 0.98),
+    {
+        textAlign: 'top left',
+        backDropColor: 0x1f1f1f,
+        letterSpacing: 0.05,
+    }
 );
-resourceMonitor.layers.set(1);
-resourceMonitor.sync();
-hudScene.add(resourceMonitor);
-
-const rmPadding = 5;
-const rmWidth = 150 + rmPadding * 2;
-const rmHeight = rmFontSize * rmLineHeight * 2 + rmPadding * 2;
-const backdrop = new T.Mesh(
-    new T.PlaneGeometry(rmWidth, rmHeight),
-    new T.MeshBasicMaterial({ color: 0x1f1f1f })
-);
-backdrop.position.set(
-    -window.innerWidth / 2 + 5 + rmWidth / 2,
-    window.innerHeight / 2 - 5 - rmHeight / 2,
-    0
-);
-backdrop.layers.set(1);
-hudScene.add(backdrop);
+resourceMonitor.addToHudScene();
 
 // controls callout
-const controlsText = new Text();
-controlsText.font = PIXEL_FONT;
-controlsText.text = `Controls:\nClick to build\nWASD to move\nQE and Arrow Keys to rotate\nSpace/Shift to zoom\n\n\nBuild MINES on mountains and FARMS on grass\nMINES costs 20 minerals\nFARMS cost 5 minerals\n builds also have an upkeep cost of 5 food`;
-controlsText.fontSize = rmFontSize;
-controlsText.lineHeight = rmLineHeight;
-controlsText.anchorX = 'left';
-controlsText.anchorY = 'bottom';
-controlsText.position.set(
-    -window.innerWidth / 2 + 10,
-    -window.innerHeight / 2 + 10,
-    0
-);
-controlsText.layers.set(1);
-controlsText.sync();
-hudScene.add(controlsText);
+const ctrlCallout = new TextBox(
+    `Controls:
+Click to build
+    WASD to move
+    QE and Arrow Keys to rotate
+    Space/Shift to zoom
 
-const ccWidth = 450 + rmPadding * 2;
-const ccHeight = rmFontSize * rmLineHeight * 11 + rmPadding * 2;
-const ccbackdrop = new T.Mesh(
-    new T.PlaneGeometry(ccWidth, ccHeight),
-    new T.MeshBasicMaterial({ color: 0x1f1f1f })
+
+Build MINES on mountains and FARMS on grass
+    MINES costs 20 minerals
+    FARMS cost 5 minerals
+    MINES also have an upkeep cost of 5 food`,
+    new T.Vector2(-0.98, -0.98),
+    { backDropColor: 0x1f1f1f, letterSpacing: 0.05 }
 );
-ccbackdrop.position.set(
-    -window.innerWidth / 2 + 5 + ccWidth / 2,
-    -window.innerHeight / 2 + 5 + ccHeight / 2,
-    0
-);
-ccbackdrop.layers.set(1);
-hudScene.add(ccbackdrop);
+ctrlCallout.addToHudScene();
 
 let buildings: Array<Building> = [];
 
 let isRunning = true;
 let lastTimeStamp: number = performance.now();
-let lastFood = getResource(ResourceTypes.FOOD);
-let lastMinerals = getResource(ResourceTypes.MINERALS);
+
 function gameLoop(now: number) {
     if (!isRunning) return;
 
@@ -184,12 +160,7 @@ function gameLoop(now: number) {
 
     const curMinerals = getResource(ResourceTypes.MINERALS);
     const curFood = getResource(ResourceTypes.FOOD);
-    if (lastMinerals !== curMinerals || lastFood !== curFood) {
-        lastMinerals = curMinerals;
-        lastFood = curFood;
-        resourceMonitor.text = `Minerals: ${curMinerals}\nFood: ${curFood}`;
-        resourceMonitor.sync();
-    }
+    resourceMonitor.updateText(`Minerals: ${curMinerals}\nFood: ${curFood}`);
 
     engine.render(deltaTime);
 

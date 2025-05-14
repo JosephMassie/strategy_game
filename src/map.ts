@@ -1,7 +1,7 @@
 import * as T from 'three';
 
 import { randInt } from '@libraries/core';
-import GameEngine from '@libraries/game_engine';
+import getGameEngine, { GameEngine } from '@libraries/game_engine';
 import { loadMesh, addFileExtension } from '@libraries/resource_loader';
 
 type MapCoords = [x: number, y: number];
@@ -60,14 +60,13 @@ export default class LvlMap {
     #mountainModel: T.Mesh | null = null;
 
     constructor(
-        engine: GameEngine,
         width: number,
         height: number,
         startPos: T.Vector3 = new T.Vector3(0, 0, 0)
     ) {
         console.log(`generating ${width}x${height} map`);
 
-        this.#engine = engine;
+        this.#engine = getGameEngine();
         this.#width = width;
         this.#height = height;
         this.#tiles = Array(height).fill([]);
