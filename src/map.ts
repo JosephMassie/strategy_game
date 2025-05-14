@@ -104,12 +104,6 @@ export default class LvlMap {
             }
         }
 
-        // Start loading actual models
-        this.#modelPromise = this.#loadModels();
-        this.#modelPromise.then(() => {
-            this.#initializeModels();
-        });
-
         console.log(`raising mountains`);
         this.#terraForm(Terrain.MOUNTAIN, { percentCoverage: 0.15 });
 
@@ -118,6 +112,12 @@ export default class LvlMap {
 
         console.log(`laying down sand`);
         this.#terraForm(Terrain.SAND, { percentCoverage: 0.1 });
+
+        // Start loading actual models
+        this.#modelPromise = this.#loadModels();
+        this.#modelPromise.then(() => {
+            this.#initializeModels();
+        });
     }
 
     async #loadModels(): Promise<Record<string, T.Mesh>> {
@@ -154,6 +154,7 @@ export default class LvlMap {
             tileSize = size.x;
             console.log(`tile size is ${tileSize}`);
 
+            const start = performance.mark('load tile meshes start');
             // Replace placeholder meshes with actual models
             this.#tiles.flat().forEach((tile) => {
                 if (!tile.mesh) return;
@@ -199,6 +200,10 @@ export default class LvlMap {
                     tile.position.copy(newPos);
                 }
             });
+            console.log(
+                `finsihed replacing tile meshes`,
+                performance.measure('load tile meshes', start.name)
+            );
         } catch (err) {
             console.error('Failed to load tile models:', err);
         }

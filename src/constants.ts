@@ -8,4 +8,4 @@ export const INPUT_TAP_COOLDOWN = 200;
 export const TILE_MESHES = ['grass', 'sand', 'mountain', 'water'];
 export const BUILDING_MESHES = ['farm', 'mine'];
 
-export const PIXEL_FONT = '/PixelifySans-VariableFont_wght.ttf';
+export const PIXEL_FONT = '/PixgamerRegular-OVD6A.ttf';

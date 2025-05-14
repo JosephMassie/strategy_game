@@ -29,9 +29,9 @@ const engine = new GameEngine(canvas, input, {
 });
 
 // preload all the meshes
-[...TILE_MESHES, ...BUILDING_MESHES].forEach((path) => {
-    loadMesh(addFileExtension('gltf')(path));
-});
+const loadingResources = [...TILE_MESHES, ...BUILDING_MESHES].map((path) =>
+    loadMesh(addFileExtension('gltf')(path))
+);
 
 const scene = engine.createScene();
 engine.setActiveScene(scene);
@@ -57,7 +57,7 @@ map.addToScene();
 
 canvas.focus();
 
-const rmFontSize = 20;
+const rmFontSize = 24;
 const rmLineHeight = 1.2;
 const resourceMonitor = new Text();
 resourceMonitor.font = PIXEL_FONT;
@@ -196,4 +196,7 @@ function gameLoop(now: number) {
     requestAnimationFrame(gameLoop);
 }
 
-setTimeout(() => gameLoop(lastTimeStamp), 10);
+// Wait to start the game loop after all primary resources are loaded
+Promise.all(loadingResources).then(() => {
+    gameLoop(lastTimeStamp);
+});
