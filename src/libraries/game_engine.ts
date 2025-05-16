@@ -3,6 +3,7 @@ import {
     EffectComposer,
     OutlinePass,
     OutputPass,
+    ShaderPass,
     RenderPass,
 } from 'three/examples/jsm/Addons.js';
 import { Text } from 'troika-three-text';
@@ -12,7 +13,7 @@ import WebGL from 'three/addons/capabilities/WebGL.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import IsometricCameraController from '@libraries/isometric_camera';
-import { msToS, vec2ToString, vec3ToString } from '@libraries/core';
+import { vec2ToString, vec3ToString } from '@libraries/core';
 import { input } from '@libraries/input';
 
 type GameEngineOptions = {
@@ -98,10 +99,14 @@ export class GameEngine {
         this.#winWidth = window.innerWidth;
         this.#winHeight = window.innerHeight;
 
-        this.#renderer = new T.WebGLRenderer({ canvas });
+        this.#renderer = new T.WebGLRenderer({
+            canvas,
+            alpha: true,
+            antialias: true,
+        });
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(this.#winWidth, this.#winHeight);
-
+        this.#renderer.autoClear = !useShaders;
         this.#composer = new EffectComposer(this.#renderer);
         this.#outputPass = new OutputPass();
         this.#composer.addPass(this.#outputPass);
@@ -176,6 +181,14 @@ export class GameEngine {
                         this.#hudCamera.bottom = -halfWinHeight;
                         this.#hudCamera.updateProjectionMatrix();
 
+                        // update composers when using shaders
+                        if (this.#useShaders) {
+                            this.#composer.setSize(
+                                this.#winWidth,
+                                this.#winHeight
+                            );
+                        }
+
                         // make sure to call all registered listeners
                         this.#resizeListeners.forEach((callback) => {
                             callback(this.#winWidth, this.#winHeight);
@@ -234,6 +247,35 @@ export class GameEngine {
     createScene(): T.Scene {
         return new T.Scene();
     }
+
+    #rebuildRenderPasses(additionalPasses?: Array<RenderPass | OutlinePass>) {
+        this.#composer.passes = [];
+
+        if (this.#mainRenderPass) {
+            this.#mainRenderPass.clear = true;
+            this.#composer.addPass(this.#mainRenderPass);
+        }
+
+        if (Array.isArray(additionalPasses)) {
+            additionalPasses.forEach((pass) => this.#composer.addPass(pass));
+        }
+
+        if (this.#hudRenderPass) {
+            this.#hudRenderPass.clear = false;
+            this.#hudRenderPass.clearDepth = true;
+            this.#composer.addPass(this.#hudRenderPass);
+        }
+
+        this.#composer.addPass(this.#outputPass);
+
+        // Log the pass stack for debugging
+        if (this.#debug) {
+            console.log('Rebuilt render passes:');
+            this.#composer.passes.forEach((pass, i) => {
+                console.log(`${i}: ${pass.constructor.name}`, pass);
+            });
+        }
+    }
     /* Set the current active scene to render by
      * default when no scene is passed to the
      * render method
@@ -241,12 +283,8 @@ export class GameEngine {
     setActiveScene(s: T.Scene) {
         this.#activeScene = s;
 
-        if (this.#mainRenderPass !== null) {
-            this.#composer.removePass(this.#mainRenderPass);
-        }
-
         this.#mainRenderPass = new RenderPass(this.#activeScene, this.#camera);
-        this.#composer.insertPass(this.#mainRenderPass, 0);
+        this.#rebuildRenderPasses();
     }
     getActiveScene(): T.Scene | null {
         return this.#activeScene;
@@ -259,12 +297,9 @@ export class GameEngine {
             this.#activeHud.add(this.#fpsCounter);
         }
 
-        if (this.#hudRenderPass !== null) {
-            this.#composer.removePass(this.#hudRenderPass);
-        }
-
         this.#hudRenderPass = new RenderPass(this.#activeHud, this.#hudCamera);
-        this.#composer.addPass(this.#hudRenderPass);
+        this.#hudRenderPass.clear = false;
+        this.#rebuildRenderPasses();
     }
     getActiveHudScene(): T.Scene | null {
         return this.#activeHud;
@@ -277,7 +312,7 @@ export class GameEngine {
         const targetScene = scene ?? this.#activeScene;
         if (targetScene === null) {
             console.error(
-                `could not create outline shader, invalid scene or not active scene`
+                'could not create outline shader, invalid scene or not active scene'
             );
             return;
         }
@@ -287,8 +322,7 @@ export class GameEngine {
             targetScene,
             this.#camera
         );
-        this.#composer.addPass(outline);
-
+        this.#rebuildRenderPasses([outline]);
         return outline;
     }
 
@@ -331,12 +365,6 @@ export class GameEngine {
 
     update(dT: number = 0) {
         this.#calcFps(dT);
-        const secDt = msToS(dT);
-
-        if (this.#debug)
-            console.log(
-                `dT -> ${secDt.toFixed(2)}s fps -> ${this.#fps.toFixed(2)}`
-            );
 
         if (this.#orbitCtrls) {
             /* clamp camera position to prevent going below the ground plane

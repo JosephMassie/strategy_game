@@ -25,8 +25,8 @@ input.initialize(canvas);
 
 const engine = getGameEngine(canvas, {
     autoResize: true,
-    debug: false,
-    useShaders: false,
+    debug: true,
+    useShaders: true,
 });
 
 // preload all the meshes
