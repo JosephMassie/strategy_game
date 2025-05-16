@@ -10,6 +10,7 @@ type TextBoxOpts = {
     fontSize?: number;
     lineHeight?: number;
     letterSpacing?: number;
+    anchor?: string;
     textAlign?: string;
     backDropColor?: number;
     maxWidth?: number;
@@ -53,13 +54,14 @@ export default class TextBox {
             textColor = 0xffffff,
             backDropColor,
             fontSize = 24,
+            textAlign,
             lineHeight = 1.25,
             letterSpacing = 0,
-            textAlign = 'bottom left',
+            anchor = 'bottom left',
             padding = 10,
             depth = 0,
         } = { ...options };
-        const [vertAlign, horzAlign] = textAlign.split(' ');
+        const [vertAnchor, horizAnchor] = anchor.split(' ');
 
         this.#depth = depth;
         this.#padding = padding;
@@ -69,8 +71,9 @@ export default class TextBox {
         this.#txtObj.lineHeight = lineHeight;
         this.#txtObj.letterSpacing = letterSpacing;
         this.#txtObj.fontSize = fontSize;
-        this.#txtObj.anchorY = vertAlign;
-        this.#txtObj.anchorX = horzAlign;
+        if (textAlign) this.#txtObj.textAlign = textAlign;
+        this.#txtObj.anchorY = vertAnchor;
+        this.#txtObj.anchorX = horizAnchor;
 
         const [width, height] = this.#calcBdDimensions();
         this.#width = width;

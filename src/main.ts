@@ -56,6 +56,8 @@ engine.setActiveScene(scene);
 const hudScene = engine.createScene();
 engine.setActiveHudScene(hudScene);
 
+engine.createToonShader();
+
 const ambientLight = new T.AmbientLight(0xffffff, 2);
 scene.add(ambientLight);
 
@@ -75,7 +77,7 @@ const resourceMonitor = new TextBox(
     )}`,
     new T.Vector2(-0.98, 0.98),
     {
-        textAlign: 'top left',
+        anchor: 'top left',
         backDropColor: 0x1f1f1f,
         letterSpacing: 0.05,
     }

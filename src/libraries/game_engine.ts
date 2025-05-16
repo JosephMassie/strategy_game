@@ -6,7 +6,6 @@ import {
     ShaderPass,
     RenderPass,
 } from 'three/examples/jsm/Addons.js';
-import { Text } from 'troika-three-text';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import WebGL from 'three/addons/capabilities/WebGL.js';
@@ -15,6 +14,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import IsometricCameraController from '@libraries/isometric_camera';
 import { vec2ToString, vec3ToString } from '@libraries/core';
 import { input } from '@libraries/input';
+import TextBox from '@/components/ui_textbox';
+import ToonShader from '@/shaders/toon';
 
 type GameEngineOptions = {
     autoResize?: boolean;
@@ -56,6 +57,7 @@ export class GameEngine {
     #mainRenderPass: RenderPass | null = null;
     #hudRenderPass: RenderPass | null = null;
     #outputPass: OutputPass;
+    #additionalPasses: Array<ShaderPass | OutlinePass> = [];
 
     #camera: T.PerspectiveCamera;
     #isoCamera: IsometricCameraController;
@@ -75,7 +77,7 @@ export class GameEngine {
     #displayFps = false;
     #fps = 0;
     #frameTimeHistory: number[] = [];
-    #fpsCounter: Text | null = null;
+    #fpsCounter: TextBox | null = null;
 
     constructor(canvas: HTMLCanvasElement, options?: GameEngineOptions) {
         const {
@@ -115,7 +117,7 @@ export class GameEngine {
             75,
             this.#winWidth / this.#winHeight,
             0.1,
-            500
+            800
         );
 
         this.#camera.layers.enable(0);
@@ -205,25 +207,28 @@ export class GameEngine {
     }
 
     showFpsCounter() {
+        if (this.#displayFps) return;
+
         this.#displayFps = true;
-        const text = new Text();
-        text.anchorX = 'right';
-        text.anchorY = 'top';
-        text.textAlign = 'right';
-        text.text = `fps: 0
-            mouse_pos: [0, 0]
-            mouse_hud_pos: [0, 0]
-            cam_pos: [0, 0, 0]`;
-        text.color = 0xffffff;
-        text.fontSize = 16;
-        text.position.set(this.#winWidth / 2 - 10, this.#winHeight / 2 - 10, 0);
-        text.sync();
-        text.layers.set(1);
+
+        const text = new TextBox(
+            `fps: 0
+mouse_pos: [0, 0]
+mouse_hud_pos: [0, 0]
+cam_pos: [0, 0, 0]`,
+            new T.Vector2(0.98, 0.98),
+            {
+                anchor: 'top right',
+                textAlign: 'right',
+                letterSpacing: 0.05,
+                backDropColor: 0x1f1f1f,
+            }
+        );
         this.#fpsCounter = text;
 
         // If an active HUD scene is set add the fps counter to it
         if (this.#activeHud !== null) {
-            this.#activeHud.add(this.#fpsCounter);
+            text.addToHudScene();
         }
     }
     // Internal only utility methods
@@ -248,7 +253,7 @@ export class GameEngine {
         return new T.Scene();
     }
 
-    #rebuildRenderPasses(additionalPasses?: Array<RenderPass | OutlinePass>) {
+    #rebuildRenderPasses(additionalPasses?: Array<ShaderPass | OutlinePass>) {
         this.#composer.passes = [];
 
         if (this.#mainRenderPass) {
@@ -257,7 +262,13 @@ export class GameEngine {
         }
 
         if (Array.isArray(additionalPasses)) {
-            additionalPasses.forEach((pass) => this.#composer.addPass(pass));
+            this.#additionalPasses = [
+                ...this.#additionalPasses,
+                ...additionalPasses,
+            ];
+            this.#additionalPasses.forEach((pass) =>
+                this.#composer.addPass(pass)
+            );
         }
 
         if (this.#hudRenderPass) {
@@ -294,7 +305,7 @@ export class GameEngine {
         this.#activeHud = s;
         // make sure to add any debug hud elements to the active hud scene
         if (this.#displayFps && this.#fpsCounter !== null) {
-            this.#activeHud.add(this.#fpsCounter);
+            this.#fpsCounter.addToHudScene();
         }
 
         this.#hudRenderPass = new RenderPass(this.#activeHud, this.#hudCamera);
@@ -324,6 +335,22 @@ export class GameEngine {
         );
         this.#rebuildRenderPasses([outline]);
         return outline;
+    }
+
+    createToonShader(scene?: T.Scene): ShaderPass | undefined {
+        const targetScene = scene ?? this.#activeScene;
+        if (targetScene === null) {
+            console.error(
+                `failed to create toon shader, invalid scene or no active scene available`
+            );
+            return;
+        }
+
+        const toon = new ShaderPass(ToonShader);
+        toon.uniforms.lightPosition.value.set(50, 60, 50);
+        toon.uniforms.steps.value = 4.0;
+        this.#rebuildRenderPasses([toon]);
+        return toon;
     }
 
     // Camera Control Methods
@@ -388,16 +415,15 @@ export class GameEngine {
         const mousePos = input.getMousePos();
         const mouseWorldPos = input.toCanvasCoords(mousePos, false);
         if (this.#displayFps && this.#fpsCounter !== null) {
-            this.#fpsCounter.text = `fps: ${this.#fps.toFixed(
-                2
-            )}\nmouse_pos: ${vec2ToString(
-                mousePos,
-                2
-            )}\nmouse_hud_pos: ${vec2ToString(
-                mouseWorldPos,
-                2
-            )}\ncam_pos: ${vec3ToString(this.#camera.position, 2)}`;
-            this.#fpsCounter.sync();
+            this.#fpsCounter.updateText(
+                `fps: ${this.#fps.toFixed(2)}\nmouse_pos: ${vec2ToString(
+                    mousePos,
+                    2
+                )}\nmouse_hud_pos: ${vec2ToString(
+                    mouseWorldPos,
+                    2
+                )}\ncam_pos: ${vec3ToString(this.#camera.position, 2)}`
+            );
         }
     }
     /* Render either the current active scene or provided scene */
