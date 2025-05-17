@@ -23,18 +23,49 @@ canvas[tabindex]:focus {
     outline: none;
 }
 
-.fps-counter {
-    z-index: 10;
+.loading_container {
     position: fixed;
 
-    top: 0;
-    right: 0;
+    top: 50%;
+    left: 50%;
 
-    border-radius: 100;
-    padding: 1em;
-    background: hsla(0, 100, 0, 0.5);
+    transform: translate3d(-50%, -50%, 0);
 
-    color: hsl(0, 100, 100);
+    width: 50vw;
+    height: 50vh;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.loading_wheel {
+    margin: auto;
+    border-radius: 100%;
+    border: 2px solid greenyellow;
+    border-bottom: transparent;
+    border-right: transparent;
+    width: 200px;
+    height: 200px;
+
+    animation: spin 500ms infinite;
+}
+
+.loading_text {
+    margin: auto;
+
+    font-size: 2em;
     font-weight: bold;
-    white-space: pre-wrap;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0);
+    }
+    50% {
+        transform: rotate(180deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }

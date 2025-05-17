@@ -21,6 +21,13 @@ const canvas = document.querySelector(
     'canvas#background'
 )! as HTMLCanvasElement;
 
+const loadingContainer = document.createElement('div');
+loadingContainer.classList.add('loading_container');
+loadingContainer.innerHTML = `<div class="loading_text">loading...</div>`;
+const loadingWheel = document.createElement('div');
+loadingWheel.classList.add('loading_wheel');
+loadingContainer.prepend(loadingWheel);
+canvas.insertAdjacentElement('afterend', loadingContainer);
 input.initialize(canvas);
 
 const engine = getGameEngine(canvas, {
@@ -171,5 +178,6 @@ function gameLoop(now: number) {
 
 // Wait to start the game loop after all primary resources are loaded
 Promise.all(loadingResources).then(() => {
+    loadingContainer.style.display = 'none';
     gameLoop(lastTimeStamp);
 });
