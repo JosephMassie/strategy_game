@@ -71,7 +71,7 @@ export default class LvlMap {
         this.#height = height;
         this.#tiles = Array(height).fill([]);
 
-        sun.position.set(50, 60, 50);
+        sun.position.set(0, 10, 0);
 
         // Initialize map with placeholder tiles
         for (let y = 0; y < height; y++) {

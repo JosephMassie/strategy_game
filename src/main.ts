@@ -65,7 +65,7 @@ engine.setActiveHudScene(hudScene);
 
 engine.createToonShader();
 
-const ambientLight = new T.AmbientLight(0xffffff, 2);
+const ambientLight = new T.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
 const rows = 100;
