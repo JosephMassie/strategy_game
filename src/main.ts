@@ -33,7 +33,7 @@ input.initialize(canvas);
 const engine = getGameEngine(canvas, {
     autoResize: true,
     debug: true,
-    useShaders: true,
+    useShaders: false,
 });
 
 // preload all the meshes
@@ -65,7 +65,7 @@ engine.setActiveHudScene(hudScene);
 
 engine.createToonShader();
 
-const ambientLight = new T.AmbientLight(0xffffff, 0.5);
+const ambientLight = new T.AmbientLight(0xffffff, 0.25);
 scene.add(ambientLight);
 
 const rows = 100;
