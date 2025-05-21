@@ -32,8 +32,6 @@ type TerraFormOptions = {
     terraformerFactor?: number;
 };
 
-const sun = new T.DirectionalLight(0xffffff, 2.5);
-sun.castShadow = true;
 let tileSize = 12;
 
 const PLACEHOLDER_GEOMETRY = new T.PlaneGeometry(tileSize, tileSize);
@@ -70,8 +68,6 @@ export default class LvlMap {
         this.#width = width;
         this.#height = height;
         this.#tiles = Array(height).fill([]);
-
-        sun.position.set(0, 10, 0);
 
         // Initialize map with placeholder tiles
         for (let y = 0; y < height; y++) {
@@ -113,10 +109,16 @@ export default class LvlMap {
         this.#terraForm(Terrain.SAND, { percentCoverage: 0.1 });
 
         // Start loading actual models
+        const start = performance.mark('load tile meshes start');
         this.#modelPromise = this.#loadModels();
-        this.#modelPromise.then(() => {
-            this.#initializeModels();
-        });
+        this.#modelPromise
+            .then(() => this.#initializeModels())
+            .then(() => {
+                console.log(
+                    `finished replacing tile meshes`,
+                    performance.measure('load tile meshes', start.name)
+                );
+            });
     }
 
     async #loadModels(): Promise<Record<string, T.Mesh>> {
@@ -153,7 +155,6 @@ export default class LvlMap {
             tileSize = size.x;
             console.log(`tile size is ${tileSize}`);
 
-            const start = performance.mark('load tile meshes start');
             // Replace placeholder meshes with actual models
             this.#tiles.flat().forEach((tile) => {
                 if (!tile.mesh) return;
@@ -199,10 +200,6 @@ export default class LvlMap {
                     tile.position.copy(newPos);
                 }
             });
-            console.log(
-                `finsihed replacing tile meshes`,
-                performance.measure('load tile meshes', start.name)
-            );
         } catch (err) {
             console.error('Failed to load tile models:', err);
         }
@@ -523,8 +520,6 @@ export default class LvlMap {
                 this.#tiles.flat().forEach((tile) => {
                     if (tile.mesh !== null) targetScene.add(tile.mesh);
                 });
-
-                targetScene.add(sun);
             })
             .catch((err) => {
                 console.error(

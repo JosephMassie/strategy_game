@@ -14,12 +14,14 @@ import {
 } from '@components/buildings';
 import { getResource, ResourceTypes } from './game_state';
 import { loadMesh, addFileExtension } from '@libraries/resource_loader';
-import { BUILDING_MESHES, PIXEL_FONT, TILE_MESHES } from './constants';
+import { BUILDING_MESHES, PIXEL_FONT, SUN_POS, TILE_MESHES } from './constants';
 import TextBox from './components/ui_textbox';
 
 const canvas = document.querySelector(
     'canvas#background'
 )! as HTMLCanvasElement;
+
+const start = performance.mark('game load');
 
 const loadingContainer = document.createElement('div');
 loadingContainer.classList.add('loading_container');
@@ -43,17 +45,22 @@ const loadingResources: Array<Promise<any>> = [
 ].map((path) => loadMesh(addFileExtension('gltf')(path)));
 
 loadingResources.push(
-    new Promise((resolve) => {
+    new Promise((resolve, reject) => {
         preloadFont(
             {
                 font: PIXEL_FONT,
                 characters: '1234567890abcdefghijklmnopqrstuvwxyz',
+                sdfGlyphSize: 16,
             },
             () => {
                 console.log(`finished preloading font ${PIXEL_FONT}`);
                 resolve('font loaded');
             }
         );
+
+        setTimeout(() => {
+            reject(`failed to preload font`);
+        }, 1500);
     })
 );
 
@@ -63,17 +70,25 @@ engine.setActiveScene(scene);
 const hudScene = engine.createScene();
 engine.setActiveHudScene(hudScene);
 
-engine.createToonShader();
-
-const ambientLight = new T.AmbientLight(0xffffff, 0.25);
+const ambientLight = new T.AmbientLight(0xffffff, 1);
 scene.add(ambientLight);
+
+const sun = new T.DirectionalLight(0xffffff, 3);
+sun.position.set(...SUN_POS);
+scene.add(sun);
+
+engine.createToonShader();
 
 const rows = 100;
 const columns = rows;
 const tileSize = 12;
 const width = rows * tileSize;
 
-const map = new LvlMap(rows, columns, new T.Vector3(-width / 2, 0, -width / 2));
+const map = new LvlMap(
+    rows,
+    columns,
+    new T.Vector3(-width / 2, -3, -width / 2)
+);
 map.addToScene();
 
 canvas.focus();
@@ -129,7 +144,7 @@ function gameLoop(now: number) {
         console.log('Escape pressed, closing game');
         isRunning = false;
     }
-    engine.update(deltaTime);
+    engine.update();
     map.update();
 
     buildings.forEach((building) => {
@@ -177,7 +192,17 @@ function gameLoop(now: number) {
 }
 
 // Wait to start the game loop after all primary resources are loaded
-Promise.all(loadingResources).then(() => {
+const startGame = () => {
+    console.log(
+        `finished loading, starting game`,
+        performance.measure('game load', start.name)
+    );
     loadingContainer.style.display = 'none';
     gameLoop(lastTimeStamp);
-});
+};
+
+Promise.all(loadingResources)
+    .finally(startGame)
+    .catch((reason) => {
+        console.error(`a resource failed to load: ${reason}`);
+    });

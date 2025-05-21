@@ -3,10 +3,11 @@ import * as T from 'three';
 export const ToonShader = {
     uniforms: {
         tDiffuse: { value: null }, // Input texture from previous pass
-        tNormal: { value: null }, // Normal texture
-        tDepth: { value: null }, // Depth texture
         lightPosition: { value: new T.Vector3(1, 1, 1) },
         steps: { value: 4.0 },
+        outlineMultiplier: { value: 2.0 },
+        outlineThreshold: { value: 0.5 },
+        samplingRadius: { value: 0.75 },
     },
 
     vertexShader: /* glsl */ `
@@ -22,6 +23,9 @@ export const ToonShader = {
         uniform sampler2D tDiffuse;
         uniform vec3 lightPosition;
         uniform float steps;
+        uniform float samplingRadius;
+        uniform float outlineMultiplier;
+        uniform float outlineThreshold;
         
         varying vec2 vUv;
 
@@ -44,22 +48,31 @@ export const ToonShader = {
             float neighbors = 0.0;
             
             // Sample neighboring pixels for edge detection
-            for(float i = -1.0; i <= 1.0; i++) {
-                for(float j = -1.0; j <= 1.0; j++) {
+            float maxOffset = 2.0 * samplingRadius;
+            float sampleCount = 0.0;
+            for(float i = -maxOffset; i <= maxOffset; i++) {
+                for(float j = -maxOffset; j <= maxOffset; j++) {
                     if(i == 0.0 && j == 0.0) continue;
-                    vec2 offset = vec2(i, j) * pixelSize;
-                    neighbors += length(texture2D(tDiffuse, vUv + offset).rgb);
+                    vec2 point = vec2(i, j);
+                    if (length(point) <= samplingRadius * 2.0) {
+                        vec2 offset = point * pixelSize;
+                        neighbors += length(texture2D(tDiffuse, vUv + offset).rgb);
+                        sampleCount += 1.0;
+                    }
                 }
             }
             
-            // Create outline based on neighbor difference
-            if(abs(length(texel.rgb) * 8.0 - neighbors) > 0.1) {
+            // Normalize neighbors by sample count
+            neighbors = neighbors / max(sampleCount, 1.0);
+            
+                // Create outline based on normalized neighbor difference
+            float centerIntensity = length(texel.rgb);
+            if(abs(centerIntensity * outlineMultiplier - neighbors * outlineMultiplier) > outlineThreshold) {
                 outline = 0.0;
             }
             
             gl_FragColor = vec4(toonColor * outline, texel.a);
-        }
-    `,
+        }`,
 };
 
 // Create a custom shader pass

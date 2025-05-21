@@ -28,3 +28,17 @@ export function vec2ToString(vec: T.Vector2, maxDecimal?: number) {
 
     return `[${x}, ${y}]`;
 }
+
+export type ShaderUniform = Record<string, { value: any }>;
+
+export const shaderUniforms = (
+    uniforms: Record<string, any>
+): ShaderUniform => {
+    const output: ShaderUniform = {};
+
+    for (const key in uniforms) {
+        output[key] = uniforms[key];
+    }
+
+    return output;
+};

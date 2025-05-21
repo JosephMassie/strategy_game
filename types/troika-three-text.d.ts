@@ -3,6 +3,7 @@ import * as T from 'three';
 type PreloadFontOptions = {
     font: string;
     characters: string;
+    sdfGlyphSize?: number;
 };
 
 declare module 'troika-three-text' {

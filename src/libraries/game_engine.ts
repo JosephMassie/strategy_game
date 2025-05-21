@@ -7,15 +7,16 @@ import {
     RenderPass,
 } from 'three/examples/jsm/Addons.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import Stats from 'three/examples/jsm/libs/stats.module.js';
 
 import WebGL from 'three/addons/capabilities/WebGL.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import IsometricCameraController from '@libraries/isometric_camera';
-import { vec2ToString, vec3ToString } from '@libraries/core';
+import { shaderUniforms } from '@libraries/core';
 import { input } from '@libraries/input';
-import TextBox from '@/components/ui_textbox';
 import ToonShader from '@/shaders/toon';
+import { SUN_POS } from '@/constants';
 
 type GameEngineOptions = {
     autoResize?: boolean;
@@ -75,9 +76,7 @@ export class GameEngine {
     #resizeListeners: Array<(width: number, height: number) => void> = [];
 
     #displayFps = false;
-    #fps = 0;
-    #frameTimeHistory: number[] = [];
-    #fpsCounter: TextBox | null = null;
+    #fpsCounter: Stats | null = null;
 
     constructor(canvas: HTMLCanvasElement, options?: GameEngineOptions) {
         const {
@@ -210,37 +209,12 @@ export class GameEngine {
         if (this.#displayFps) return;
 
         this.#displayFps = true;
+        const stats = new Stats();
+        stats.dom.style.left = 'auto';
+        stats.dom.style.right = '0';
+        document.body.append(stats.dom);
 
-        const text = new TextBox(
-            `fps: 0
-mouse_pos: [0, 0]
-mouse_hud_pos: [0, 0]
-cam_pos: [0, 0, 0]`,
-            new T.Vector2(0.98, 0.98),
-            {
-                anchor: 'top right',
-                textAlign: 'right',
-                letterSpacing: 0.05,
-                backDropColor: 0x1f1f1f,
-            }
-        );
-        this.#fpsCounter = text;
-
-        // If an active HUD scene is set add the fps counter to it
-        if (this.#activeHud !== null) {
-            text.addToHudScene();
-        }
-    }
-    // Internal only utility methods
-    #calcFps(dT: number) {
-        this.#frameTimeHistory.push(Math.round(dT));
-        if (this.#frameTimeHistory.length > 100) {
-            this.#frameTimeHistory.shift();
-        }
-        const avgFrameTime =
-            this.#frameTimeHistory.reduce((a, b) => a + b, 0) /
-            this.#frameTimeHistory.length;
-        this.#fps = 1000 / avgFrameTime;
+        this.#fpsCounter = stats;
     }
 
     // Register a listener for when the screen is resized
@@ -303,10 +277,6 @@ cam_pos: [0, 0, 0]`,
     // Scene control methods specifically for the HUD
     setActiveHudScene(s: T.Scene) {
         this.#activeHud = s;
-        // make sure to add any debug hud elements to the active hud scene
-        if (this.#displayFps && this.#fpsCounter !== null) {
-            this.#fpsCounter.addToHudScene();
-        }
 
         this.#hudRenderPass = new RenderPass(this.#activeHud, this.#hudCamera);
         this.#hudRenderPass.clear = false;
@@ -347,8 +317,17 @@ cam_pos: [0, 0, 0]`,
         }
 
         const toon = new ShaderPass(ToonShader);
-        toon.uniforms.lightPosition.value.set(50, 60, 50);
-        toon.uniforms.steps.value = 4.0;
+
+        toon.uniforms = {
+            ...toon.uniforms,
+            ...shaderUniforms({
+                lightPosition: new T.Vector3(...SUN_POS),
+                outlineThreshold: 0.1,
+                outlineMultiplier: 2.0,
+                samplingRadius: 0.75,
+            }),
+        };
+
         this.#rebuildRenderPasses([toon]);
         return toon;
     }
@@ -390,9 +369,7 @@ cam_pos: [0, 0, 0]`,
         return this.getRaycaster(mousePos);
     }
 
-    update(dT: number = 0) {
-        this.#calcFps(dT);
-
+    update() {
         if (this.#orbitCtrls) {
             /* clamp camera position to prevent going below the ground plane
              * for oribt controls this must be done before it updates
@@ -412,18 +389,8 @@ cam_pos: [0, 0, 0]`,
             this.showFpsCounter();
         }
 
-        const mousePos = input.getMousePos();
-        const mouseWorldPos = input.toCanvasCoords(mousePos, false);
         if (this.#displayFps && this.#fpsCounter !== null) {
-            this.#fpsCounter.updateText(
-                `fps: ${this.#fps.toFixed(2)}\nmouse_pos: ${vec2ToString(
-                    mousePos,
-                    2
-                )}\nmouse_hud_pos: ${vec2ToString(
-                    mouseWorldPos,
-                    2
-                )}\ncam_pos: ${vec3ToString(this.#camera.position, 2)}`
-            );
+            this.#fpsCounter.update();
         }
     }
     /* Render either the current active scene or provided scene */
