@@ -6,7 +6,6 @@ import {
     ShaderPass,
     RenderPass,
 } from 'three/examples/jsm/Addons.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 
 import WebGL from 'three/addons/capabilities/WebGL.js';
@@ -24,8 +23,6 @@ type GameEngineOptions = {
     debug?: boolean;
     useShaders?: boolean;
 };
-
-const gltfLoader = new GLTFLoader();
 
 let engine: GameEngine;
 
