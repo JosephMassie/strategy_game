@@ -12,5 +12,6 @@ export const TILE_MESHES: ReadonlyArray<string> = [
     'water',
 ];
 export const BUILDING_MESHES: ReadonlyArray<string> = ['farm', 'mine'];
+export const OTHER_MESHES: ReadonlyArray<string> = ['exclamation'];
 
 export const PIXEL_FONT = '/PixgamerRegular-OVD6A.ttf';

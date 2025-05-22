@@ -4,6 +4,7 @@ import { Timer, setTimer } from '@libraries/timing';
 import { ResourceTypes, addResource, getResource } from '@/game_state';
 import { Terrain } from '@/map';
 import { loadMesh } from '@/libraries/resource_loader';
+import { vec3ToString } from '@/libraries/core';
 
 type ResourceList = Array<[ResourceTypes, number]>;
 
@@ -25,24 +26,26 @@ export abstract class Building {
     protected income: ResourceList = [[ResourceTypes.MINERALS, 0]];
     protected speed: number = 1500;
     protected mesh: T.Mesh;
+
     protected isActive: boolean = true;
+    protected exclamationMesh: T.Mesh | null = null;
 
     constructor(mesh: T.Mesh, position: T.Vector3) {
         this.mesh = mesh;
         this.mesh.position.copy(position);
 
-        // Make sure all building materials support transparency
-        if (Array.isArray(this.mesh.material)) {
-            this.mesh.material.forEach((mat) => {
-                mat.transparent = true;
-                mat.opacity = 1.0;
-            });
-        } else {
-            this.mesh.material.transparent = true;
-            this.mesh.material.opacity = 1.0;
-        }
-
         this.incomeTimer = setTimer(this.speed);
+
+        loadMesh('/exclamation.gltf').then((mesh) => {
+            this.exclamationMesh = mesh.clone();
+            this.exclamationMesh.visible = !this.isActive;
+            this.exclamationMesh.position.copy(position);
+            this.exclamationMesh.position.add(new T.Vector3(0, 20, 0));
+
+            if (this.mesh.parent) {
+                this.mesh.parent.add(this.exclamationMesh);
+            }
+        });
     }
     update() {
         if (this.incomeTimer.isDone()) {
@@ -52,6 +55,9 @@ export abstract class Building {
     }
     addToScene(scene: T.Scene) {
         scene.add(this.mesh);
+        if (this.exclamationMesh !== null) {
+            scene.add(this.exclamationMesh);
+        }
     }
 
     protected changeMesh(newMesh: T.Mesh) {
@@ -63,36 +69,15 @@ export abstract class Building {
         // Clone the mesh but keep material references
         this.mesh = newMesh.clone();
 
-        // Add a uniform to each material without cloning them
-        this.mesh.traverse((child) => {
-            if ((child as T.Mesh).isMesh) {
-                const mesh = child as T.Mesh;
-                if (Array.isArray(mesh.material)) {
-                    mesh.material.forEach((mat) => {
-                        mat.transparent = true;
-                        // Add onBeforeRender to handle opacity per instance
-                        mesh.onBeforeRender = (_, __, ___, ____, material) => {
-                            material.opacity = this.isActive ? 1.0 : 0.5;
-                        };
-                    });
-                } else if (mesh.material) {
-                    mesh.material.transparent = true;
-                    // Add onBeforeRender to handle opacity per instance
-                    mesh.onBeforeRender = (_, __, ___, ____, material) => {
-                        material.opacity = this.isActive ? 1.0 : 0.5;
-                    };
-                }
-            }
-        });
-
         scene?.add(this.mesh);
         this.mesh.position.copy(position);
     }
 
     protected setActive(active: boolean) {
         this.isActive = active;
-        // No need to traverse and set opacity directly
-        // The onBeforeRender callback will handle it
+        if (this.exclamationMesh !== null) {
+            this.exclamationMesh.visible = !this.isActive;
+        }
     }
 }
 

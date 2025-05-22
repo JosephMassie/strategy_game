@@ -14,7 +14,13 @@ import {
 } from '@components/buildings';
 import { getResource, ResourceTypes } from './game_state';
 import { loadMesh, addFileExtension } from '@libraries/resource_loader';
-import { BUILDING_MESHES, PIXEL_FONT, SUN_POS, TILE_MESHES } from './constants';
+import {
+    BUILDING_MESHES,
+    OTHER_MESHES,
+    PIXEL_FONT,
+    SUN_POS,
+    TILE_MESHES,
+} from './constants';
 import TextBox from './components/ui_textbox';
 
 const canvas = document.querySelector(
@@ -42,6 +48,7 @@ const engine = getGameEngine(canvas, {
 const loadingResources: Array<Promise<any>> = [
     ...TILE_MESHES,
     ...BUILDING_MESHES,
+    ...OTHER_MESHES,
 ].map((path) => loadMesh(addFileExtension('gltf')(path)));
 
 loadingResources.push(

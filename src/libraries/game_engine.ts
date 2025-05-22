@@ -125,8 +125,8 @@ export class GameEngine {
             minDistance: 50,
             maxDistance: 200,
             rotationHorizontal: Math.PI / -4,
-            minVerticalRotation: Math.PI / 8,
-            maxVerticalRotation: Math.PI / 4,
+            minVerticalRotation: Math.PI / 16,
+            maxVerticalRotation: Math.PI / 3,
         });
 
         const halfWinWidth = this.#winWidth / 2;
