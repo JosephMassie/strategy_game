@@ -267,15 +267,14 @@ export const input: InputHandler = {
         }
 
         const target = browserScreenPos ?? mousePos;
+        const { width, height } = canvas.getBoundingClientRect();
         const worldPos = target.clone();
 
-        worldPos.x = (worldPos.x / canvas.width) * 2 - 1;
-        worldPos.y = (worldPos.y / canvas.height) * -2 + 1;
+        worldPos.x = (worldPos.x / width) * 2 - 1;
+        worldPos.y = (worldPos.y / height) * -2 + 1;
 
         if (normalize === false) {
-            worldPos.multiply(
-                new T.Vector2(canvas.width / 2, canvas.height / 2)
-            );
+            worldPos.multiply(new T.Vector2(width / 2, height / 2));
         }
 
         return worldPos;
