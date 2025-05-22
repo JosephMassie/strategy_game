@@ -4,7 +4,6 @@ import { Timer, setTimer } from '@libraries/timing';
 import { ResourceTypes, addResource, getResource } from '@/game_state';
 import { Terrain } from '@/map';
 import { loadMesh } from '@/libraries/resource_loader';
-import { vec3ToString } from '@/libraries/core';
 
 type ResourceList = Array<[ResourceTypes, number]>;
 
