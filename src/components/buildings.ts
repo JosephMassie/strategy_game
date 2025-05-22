@@ -8,7 +8,7 @@ import { loadMesh } from '@/libraries/resource_loader';
 type ResourceList = Array<[ResourceTypes, number]>;
 
 // An interface defining base constructors for all building types
-type BuildingConstructor = {
+type BuildingConstructor = Readonly<{
     // The resource cost to construct one of these buildings
     readonly cost: ResourceList;
     // Terrain types that this building can be placed on
@@ -18,12 +18,13 @@ type BuildingConstructor = {
     // Subtract the cost of the building from the player's resources and
     // return a new instance of the building
     build: (position: T.Vector3) => Building;
-};
+}>;
 
 export abstract class Building {
     protected incomeTimer: Timer;
     protected income: ResourceList = [[ResourceTypes.MINERALS, 0]];
     protected speed: number = 1500;
+
     protected mesh: T.Mesh;
 
     protected isActive: boolean = true;
@@ -103,20 +104,25 @@ export const mineConstructor: BuildingConstructor = {
     },
 };
 
+let mineMeshLoaded = false;
+let mineMesh: T.Mesh = new T.Mesh(
+    new T.BoxGeometry(20, 40, 20),
+    new T.MeshBasicMaterial({ color: 0x000000 })
+);
 export class Mine extends Building {
     #isProcessing = false;
     #upkeepCost: ResourceList = [[ResourceTypes.FOOD, 5]];
 
     constructor(position: T.Vector3) {
-        super(
-            new T.Mesh(
-                new T.BoxGeometry(10, 10, 10),
-                new T.MeshBasicMaterial({ color: 0x00ff00 })
-            ),
-            position
-        );
+        super(mineMesh, position);
 
-        loadMesh('/mine.gltf').then(this.changeMesh.bind(this));
+        if (!mineMeshLoaded) {
+            loadMesh('/mine.gltf').then((mesh) => {
+                mineMeshLoaded = true;
+                mineMesh = mesh;
+                this.changeMesh(mesh);
+            });
+        }
 
         this.income = [[ResourceTypes.MINERALS, 10]];
     }
@@ -141,10 +147,6 @@ export class Mine extends Building {
     }
 }
 
-// Farms
-const farmGeometry = new T.BoxGeometry(4, 3.25, 8.5);
-const farmMaterial = new T.MeshBasicMaterial({ color: 0xf0f000 });
-
 export const farmConstructor: BuildingConstructor = {
     cost: [[ResourceTypes.MINERALS, 5]],
     validTerrain: [Terrain.GRASS],
@@ -157,11 +159,22 @@ export const farmConstructor: BuildingConstructor = {
     },
 };
 
+let farmMeshLoaded = false;
+let farmMesh: T.Mesh = new T.Mesh(
+    new T.BoxGeometry(10, 8, 10),
+    new T.MeshBasicMaterial({ color: 0xf0f000 })
+);
 export class Farm extends Building {
     constructor(position: T.Vector3) {
-        super(new T.Mesh(farmGeometry, farmMaterial), position);
+        super(farmMesh.clone(), position);
 
-        loadMesh('/farm.gltf').then(this.changeMesh.bind(this));
+        if (!farmMeshLoaded) {
+            loadMesh('/farm.gltf').then((mesh) => {
+                farmMeshLoaded = true;
+                farmMesh = mesh;
+                this.changeMesh(mesh);
+            });
+        }
 
         this.income = [[ResourceTypes.FOOD, 1]];
     }

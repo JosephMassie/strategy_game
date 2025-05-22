@@ -19,7 +19,6 @@ import { SUN_POS } from '@/constants';
 
 type GameEngineOptions = {
     autoResize?: boolean;
-    displayFps?: boolean;
     debug?: boolean;
     useShaders?: boolean;
 };
@@ -78,7 +77,6 @@ export class GameEngine {
     constructor(canvas: HTMLCanvasElement, options?: GameEngineOptions) {
         const {
             autoResize = true,
-            displayFps = false,
             debug = false,
             useShaders = false,
         } = options ?? {};
@@ -196,8 +194,8 @@ export class GameEngine {
             });
         }
 
-        this.#displayFps = displayFps;
-        if (this.#displayFps) {
+        if (debug) {
+            console.log(`displaying fps immediately`);
             this.showFpsCounter();
         }
     }
