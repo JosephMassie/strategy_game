@@ -5,18 +5,9 @@ const meshes = new Map<string, Promise<T.Mesh>>();
 const loader = new GLTFLoader();
 
 function loadModelPromise(url: string): Promise<T.Mesh> {
-    return new Promise<T.Mesh>((resolve, reject) => {
-        loader.load(
-            url,
-            (gltf) => {
-                resolve(gltf.scene.children[0] as T.Mesh);
-            },
-            undefined,
-            (err) => {
-                reject(err);
-            }
-        );
-    });
+    return loader
+        .loadAsync(url, console.log.bind(console, `loading...`))
+        .then((gltf) => gltf.scene.children[0] as T.Mesh);
 }
 
 export const addFileExtension = (extension: string) => (path: string) =>

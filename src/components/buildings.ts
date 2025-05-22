@@ -114,13 +114,13 @@ export class Mine extends Building {
     #upkeepCost: ResourceList = [[ResourceTypes.FOOD, 5]];
 
     constructor(position: T.Vector3) {
-        super(mineMesh, position);
+        super(mineMesh.clone(), position);
 
         if (!mineMeshLoaded) {
             loadMesh('/mine.gltf').then((mesh) => {
                 mineMeshLoaded = true;
                 mineMesh = mesh;
-                this.changeMesh(mesh);
+                this.changeMesh(mineMesh);
             });
         }
 
