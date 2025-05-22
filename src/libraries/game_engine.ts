@@ -413,20 +413,4 @@ export class GameEngine {
             }
         }
     }
-
-    // Additional helper methods to ease interaction with ThreeJS
-    loadModelPromise(url: string): Promise<T.Mesh> {
-        return new Promise<T.Mesh>((resolve, reject) => {
-            gltfLoader.load(
-                url,
-                (gltf) => {
-                    resolve(gltf.scene.children[0] as T.Mesh);
-                },
-                undefined,
-                (err) => {
-                    reject(err);
-                }
-            );
-        });
-    }
 }
