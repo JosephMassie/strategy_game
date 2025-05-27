@@ -60,6 +60,10 @@ function processMouseWheel(event: WheelEvent) {
     }
 }
 
+function preventContextMenu(event: MouseEvent) {
+    event.preventDefault();
+}
+
 export type InputHandler = {
     initialize: (target?: HTMLCanvasElement) => void;
     deInitialize: () => void;
@@ -75,15 +79,20 @@ export type InputHandler = {
     getMouseWheelDelta: () => number;
     getMousePos: () => T.Vector2;
     toCanvasCoords: (
-        browserScreenPos: T.Vector2,
+        browserScreenPos?: T.Vector2,
         normalize?: boolean
     ) => T.Vector2;
 };
 
 export const input: InputHandler = {
-    initialize: (target?: HTMLCanvasElement) => {
+    initialize: (
+        target?: HTMLCanvasElement,
+        options: { includeScroll?: boolean; hideContextMenu?: boolean } = {}
+    ) => {
         if (isInitialized) return;
         isInitialized = true;
+
+        const { includeScroll = false, hideContextMenu = true } = options;
 
         canvas = target ?? document.querySelector('canvas') ?? null;
         if (!canvas) {
@@ -93,8 +102,14 @@ export const input: InputHandler = {
         canvas.addEventListener('keyup', processKeyRelease);
         canvas.addEventListener('mousedown', processMouseButtonPress);
         canvas.addEventListener('mouseup', processMouseButtonRelease);
-        canvas.addEventListener('wheel', processMouseWheel);
+        if (includeScroll) {
+            canvas.addEventListener('wheel', processMouseWheel);
+        }
         window.addEventListener('mousemove', processMouseMove);
+
+        if (hideContextMenu) {
+            canvas.addEventListener('contextmenu', preventContextMenu);
+        }
     },
 
     deInitialize: () => {
@@ -103,6 +118,7 @@ export const input: InputHandler = {
         canvas?.removeEventListener('mousedown', processMouseButtonPress);
         canvas?.removeEventListener('mouseup', processMouseButtonRelease);
         canvas?.removeEventListener('wheel', processMouseWheel);
+        canvas?.removeEventListener('contextmenu', preventContextMenu);
         window.removeEventListener('mousemove', processMouseMove);
         canvas = null;
 
@@ -265,9 +281,9 @@ export const input: InputHandler = {
         if (!canvas) {
             throw new Error('Canvas is not initialized');
         }
+        const { width, height } = canvas.getBoundingClientRect();
 
         const target = browserScreenPos ?? mousePos;
-        const { width, height } = canvas.getBoundingClientRect();
         const worldPos = target.clone();
 
         worldPos.x = (worldPos.x / width) * 2 - 1;

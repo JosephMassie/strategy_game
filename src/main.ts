@@ -22,6 +22,7 @@ import {
     TILE_MESHES,
 } from './constants';
 import TextBox from './components/ui_textbox';
+import Hud from './libraries/hud';
 
 const canvas = document.querySelector(
     'canvas#background'
@@ -36,6 +37,7 @@ const loadingWheel = document.createElement('div');
 loadingWheel.classList.add('loading_wheel');
 loadingContainer.prepend(loadingWheel);
 canvas.insertAdjacentElement('afterend', loadingContainer);
+
 input.initialize(canvas);
 
 const engine = getGameEngine(canvas, {
@@ -74,8 +76,9 @@ loadingResources.push(
 const scene = engine.createScene();
 engine.setActiveScene(scene);
 
-const hudScene = engine.createScene();
-engine.setActiveHudScene(hudScene);
+engine.setActiveHudScene(engine.createScene());
+
+Hud.initialize();
 
 const ambientLight = new T.AmbientLight(0xffffff, 1);
 scene.add(ambientLight);
@@ -147,6 +150,8 @@ function gameLoop(now: number) {
     updateTimers(deltaTime);
     input.update();
 
+    const hudInteracted = Hud.update();
+
     if (input.isKeyPressed('Escape')) {
         console.log('Escape pressed, closing game');
         isRunning = false;
@@ -158,7 +163,7 @@ function gameLoop(now: number) {
         building.update();
     });
 
-    if (input.isMouseButtonPressed(MouseButton.LEFT)) {
+    if (!hudInteracted && input.isMouseButtonPressed(MouseButton.LEFT)) {
         const focusedTile = map.getHoveredTile();
         if (focusedTile !== null) {
             switch (focusedTile.terrain) {
