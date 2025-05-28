@@ -33,7 +33,7 @@ function relScreenToActual(rel: T.Vector2, depth: number = -1): T.Vector3 {
 
 const posOrNeg = (num: number): number => (num > 0 ? -1 : 1);
 
-export default class TextBox {
+export default class TextBox implements HudElement {
     #id: string;
     #engine = getGameEngine();
     #txtObj: Text;
@@ -95,7 +95,7 @@ export default class TextBox {
 
         this.#txtObj.sync();
 
-        Hud.addToHud(this satisfies HudElement);
+        Hud.addToHud(this);
     }
 
     // returns [width, height] based on text data
@@ -106,7 +106,7 @@ export default class TextBox {
         const lineCount = lines.length;
         const longestLine = lines.reduce(
             (longest, l) => (l.length > longest ? l.length : longest),
-            0
+            this.#depth
         );
 
         const width =

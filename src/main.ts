@@ -23,6 +23,7 @@ import {
 } from './constants';
 import TextBox from './components/ui_textbox';
 import Hud from './libraries/hud';
+import Button from './components/ui_button';
 
 const canvas = document.querySelector(
     'canvas#background'
@@ -119,11 +120,14 @@ resourceMonitor.addToHudScene();
 // controls callout
 const ctrlCallout = new TextBox(
     `Controls:
-Click to build
+Click tiles to build
     WASD to move
     QE and Arrow Keys to rotate
     Space/Shift to zoom
 
+Build mode is off by default,
+ click the 'Toggle Build' button to
+ turn it on or off
 
 Build MINES on mountains and FARMS on grass
     MINES costs 20 minerals
@@ -133,6 +137,19 @@ Build MINES on mountains and FARMS on grass
     { backDropColor: 0x1f1f1f, letterSpacing: 0.05 }
 );
 ctrlCallout.addToHudScene();
+
+let buildModeOn = false;
+const buildBtn = new Button({
+    width: 200,
+    height: 50,
+    relativeScreenPos: new T.Vector2(0.1, -0.9),
+    text: 'Toggle Build',
+});
+buildBtn.onClick = (mbutton) => {
+    if (mbutton === MouseButton.LEFT) {
+        buildModeOn = !buildModeOn;
+    }
+};
 
 let buildings: Array<Building> = [];
 
@@ -163,7 +180,11 @@ function gameLoop(now: number) {
         building.update();
     });
 
-    if (!hudInteracted && input.isMouseButtonPressed(MouseButton.LEFT)) {
+    if (
+        !hudInteracted &&
+        buildModeOn &&
+        input.isMouseButtonPressed(MouseButton.LEFT)
+    ) {
         const focusedTile = map.getHoveredTile();
         if (focusedTile !== null) {
             switch (focusedTile.terrain) {

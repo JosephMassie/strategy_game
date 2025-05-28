@@ -1,7 +1,7 @@
 import { input, MouseButton } from './input';
 //import getGameEngine, { GameEngine } from './game_engine';
 
-export type HudElement = {
+export interface HudElement {
     getId: () => string;
     getBoundingRect: () => {
         top: number;
@@ -9,9 +9,9 @@ export type HudElement = {
         left: number;
         right: number;
     };
-    hoverAction?: () => void;
+    hoverAction?: (isHovered?: boolean) => void;
     clickAction?: (button: MouseButton) => void;
-};
+}
 
 //let engine: GameEngine;
 const elements = new Map<string, HudElement>();
@@ -35,14 +35,23 @@ const Hud = {
             ) {
                 intersected = true;
 
-                if (element.clickAction) {
-                    Object.values(MouseButton)
-                        .filter((v) => typeof v === 'number')
-                        .forEach((btn) => {
-                            if (input.isMouseButtonPressed(btn)) {
-                                element.clickAction!(btn);
-                            }
-                        });
+                if (element.hoverAction) {
+                    element.hoverAction();
+                }
+
+                Object.values(MouseButton)
+                    .filter((v) => typeof v === 'number')
+                    .forEach((btn) => {
+                        if (
+                            element.clickAction &&
+                            input.isMouseButtonPressed(btn)
+                        ) {
+                            element.clickAction(btn);
+                        }
+                    });
+            } else {
+                if (element.hoverAction) {
+                    element.hoverAction(false);
                 }
             }
         });
