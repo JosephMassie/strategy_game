@@ -1,5 +1,5 @@
 import { input, MouseButton } from './input';
-import getGameEngine, { GameEngine } from './game_engine';
+//import getGameEngine, { GameEngine } from './game_engine';
 
 export type HudElement = {
     getId: () => string;
@@ -13,12 +13,12 @@ export type HudElement = {
     clickAction?: (button: MouseButton) => void;
 };
 
-let engine: GameEngine;
+//let engine: GameEngine;
 const elements = new Map<string, HudElement>();
 
 const Hud = {
     initialize() {
-        engine = getGameEngine();
+        //engine = getGameEngine();
     },
     update() {
         let intersected = false;

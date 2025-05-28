@@ -39,6 +39,7 @@ export abstract class Building {
         loadMesh('/exclamation.gltf').then((mesh) => {
             this.exclamationMesh = mesh.clone();
             this.exclamationMesh.visible = !this.isActive;
+            this.exclamationMesh.scale.set(2, 2, 2);
             this.exclamationMesh.position.copy(position);
             this.exclamationMesh.position.add(new T.Vector3(0, 20, 0));
 
