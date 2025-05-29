@@ -11,6 +11,8 @@ type ButtonOptions = {
     height: number;
     relativeScreenPos: T.Vector2;
     text?: string;
+    image?: T.Texture;
+    color?: number;
 };
 
 function relScreenToActual(rel: T.Vector2, depth: number = -1): T.Vector3 {
@@ -31,6 +33,7 @@ export default class Button implements HudElement {
     #engine = getGameEngine();
     #txtObj: Text;
     #backDrop: T.Mesh;
+    #image: T.MeshBasicMaterial;
     #relScreenPos: T.Vector2;
     #depth = 1;
     #width: number;
@@ -42,15 +45,27 @@ export default class Button implements HudElement {
     constructor(options: ButtonOptions) {
         this.#id = generateUUID();
 
-        const { width, height, relativeScreenPos, text = 'text' } = options;
+        const {
+            width,
+            height,
+            relativeScreenPos,
+            text = 'text',
+            image,
+            color,
+        } = options;
 
         this.#width = width;
         this.#height = height;
         this.#relScreenPos = relativeScreenPos.clone();
 
+        this.#image = new T.MeshBasicMaterial({
+            color,
+            map: image,
+            transparent: true,
+        });
         this.#backDrop = new T.Mesh(
             new T.PlaneGeometry(width, height),
-            new T.MeshBasicMaterial({ color: 0x444444 })
+            this.#image
         );
         this.#backDrop.layers.set(1);
 
@@ -119,10 +134,7 @@ export default class Button implements HudElement {
         if (Array.isArray(this.#backDrop.material)) {
             console.error(`had unknown excess materials`);
         } else {
-            this.#backDrop.material.dispose();
-            this.#backDrop.material = new T.MeshBasicMaterial({
-                color: isHovered ? 0x222200 : 0x444444,
-            });
+            this.#image.opacity = isHovered ? 0.5 : 1;
             if (this.onHover) this.onHover(isHovered);
         }
     }

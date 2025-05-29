@@ -19,10 +19,9 @@ export const loadMesh = async (path: string) => {
     }
 
     const request = meshLoader
-        .loadAsync(
-            `/meshes/${path}`,
-            console.log.bind(console, `loading mesh ${path}...`)
-        )
+        .loadAsync(`/meshes/${path}`, (progress) => {
+            console.log(`loading mesh ${path}`, progress);
+        })
         .then((gltf) => {
             const mesh = gltf.scene.children[0] as T.Mesh;
 
@@ -41,10 +40,46 @@ export const getLoadedMesh = (path: string) => {
     if (meshes.has(path)) {
         const mesh = meshes.get(path)!.result;
         if (!mesh) {
-            throw Error(`${path} issue loading resource`);
+            throw Error(`${path} issue loading mesh`);
         }
         return mesh;
     }
 
-    throw Error(`${path} resource not yet loaded`);
+    throw Error(`${path} mesh not yet loaded`);
+};
+
+const textures = new Map<string, Resource<T.Texture>>();
+const textureLoader = new T.TextureLoader();
+
+export const loadTexture = (path: string) => {
+    if (textures.has(path)) {
+        return textures.get(path)!.request;
+    }
+    console.log('loading texture');
+
+    const request = textureLoader
+        .loadAsync(`/textures/${path}`, (progress) => {
+            console.log(`loading texture ${path}`, progress);
+        })
+        .then((texture) => {
+            const resource = textures.get(path)!;
+            textures.set(path, { ...resource, result: texture });
+            return texture;
+        });
+
+    textures.set(path, { name: path, request });
+
+    return request;
+};
+
+export const getLoadedTexture = (path: string) => {
+    if (textures.has(path)) {
+        const texture = textures.get(path)!.result;
+        if (!texture) {
+            throw Error(`${path} issue loading texture`);
+        }
+        return texture;
+    }
+
+    throw Error(`${path} texture not yet loaded`);
 };

@@ -13,8 +13,14 @@ import {
     farmConstructor,
 } from '@components/buildings';
 import { getResource, ResourceTypes } from './game_state';
-import { loadMesh, addFileExtension } from '@libraries/resource_loader';
 import {
+    loadMesh,
+    addFileExtension,
+    loadTexture,
+    getLoadedTexture,
+} from '@libraries/resource_loader';
+import {
+    BTN_TEXTURES,
     BUILDING_MESHES,
     OTHER_MESHES,
     PIXEL_FONT,
@@ -55,6 +61,12 @@ import Button from './components/ui_button';
         ...OTHER_MESHES,
     ].map((path) => loadMesh(addFileExtension('gltf')(path)));
 
+    // and textures
+    BTN_TEXTURES.forEach((btnPath) => {
+        loadingResources.push(loadTexture(addFileExtension('png')(btnPath)));
+    });
+
+    // and fonts
     loadingResources.push(
         new Promise((resolve, reject) => {
             preloadFont(
@@ -75,6 +87,7 @@ import Button from './components/ui_button';
         })
     );
 
+    // make sure all required resources are loaded before continuing
     await Promise.all(loadingResources)
         .then(() => {
             console.log(`finished loading all resources`);
@@ -150,9 +163,10 @@ Build MINES on mountains and FARMS on grass
     let buildModeOn = false;
     const buildBtn = new Button({
         width: 200,
-        height: 50,
+        height: 100,
         relativeScreenPos: new T.Vector2(0.1, -0.9),
         text: 'Toggle Build',
+        image: getLoadedTexture(addFileExtension('png')('mine_btn')),
     });
     buildBtn.onClick = (mbutton) => {
         if (mbutton === MouseButton.LEFT) {
