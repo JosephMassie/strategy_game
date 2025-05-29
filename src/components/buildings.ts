@@ -3,7 +3,7 @@ import * as T from 'three';
 import { Timer, setTimer } from '@libraries/timing';
 import { ResourceTypes, addResource, getResource } from '@/game_state';
 import { Terrain } from '@/map';
-import { loadMesh } from '@/libraries/resource_loader';
+import { getLoadedMesh, addFileExtension } from '@/libraries/resource_loader';
 
 type ResourceList = Array<[ResourceTypes, number]>;
 
@@ -19,6 +19,8 @@ type BuildingConstructor = Readonly<{
     // return a new instance of the building
     build: (position: T.Vector3) => Building;
 }>;
+
+const addGltf = addFileExtension('gltf');
 
 export abstract class Building {
     protected incomeTimer: Timer;
@@ -36,17 +38,16 @@ export abstract class Building {
 
         this.incomeTimer = setTimer(this.speed);
 
-        loadMesh('/exclamation.gltf').then((mesh) => {
-            this.exclamationMesh = mesh.clone();
-            this.exclamationMesh.visible = !this.isActive;
-            this.exclamationMesh.scale.set(2, 2, 2);
-            this.exclamationMesh.position.copy(position);
-            this.exclamationMesh.position.add(new T.Vector3(0, 20, 0));
+        this.exclamationMesh = getLoadedMesh(addGltf('exclamation')).clone();
 
-            if (this.mesh.parent) {
-                this.mesh.parent.add(this.exclamationMesh);
-            }
-        });
+        this.exclamationMesh.visible = !this.isActive;
+        this.exclamationMesh.scale.set(1.5, 1.5, 1.5);
+        this.exclamationMesh.position.copy(position);
+        this.exclamationMesh.position.add(new T.Vector3(0, 20, 0));
+
+        if (this.mesh.parent) {
+            this.mesh.parent.add(this.exclamationMesh);
+        }
     }
     update() {
         if (this.incomeTimer.isDone()) {
@@ -59,19 +60,6 @@ export abstract class Building {
         if (this.exclamationMesh !== null) {
             scene.add(this.exclamationMesh);
         }
-    }
-
-    protected changeMesh(newMesh: T.Mesh) {
-        const position = this.mesh.position.clone();
-
-        const scene = this.mesh.parent;
-        scene?.remove(this.mesh);
-
-        // Clone the mesh but keep material references
-        this.mesh = newMesh.clone();
-
-        scene?.add(this.mesh);
-        this.mesh.position.copy(position);
     }
 
     protected setActive(active: boolean) {
@@ -105,25 +93,13 @@ export const mineConstructor: BuildingConstructor = {
     },
 };
 
-let mineMeshLoaded = false;
-let mineMesh: T.Mesh = new T.Mesh(
-    new T.BoxGeometry(20, 40, 20),
-    new T.MeshBasicMaterial({ color: 0x000000 })
-);
 export class Mine extends Building {
     #isProcessing = false;
     #upkeepCost: ResourceList = [[ResourceTypes.FOOD, 5]];
 
     constructor(position: T.Vector3) {
+        const mineMesh = getLoadedMesh(addGltf('mine'));
         super(mineMesh.clone(), position);
-
-        if (!mineMeshLoaded) {
-            loadMesh('/mine.gltf').then((mesh) => {
-                mineMeshLoaded = true;
-                mineMesh = mesh;
-                this.changeMesh(mineMesh);
-            });
-        }
 
         this.income = [[ResourceTypes.MINERALS, 10]];
     }
@@ -160,22 +136,10 @@ export const farmConstructor: BuildingConstructor = {
     },
 };
 
-let farmMeshLoaded = false;
-let farmMesh: T.Mesh = new T.Mesh(
-    new T.BoxGeometry(10, 8, 10),
-    new T.MeshBasicMaterial({ color: 0xf0f000 })
-);
 export class Farm extends Building {
     constructor(position: T.Vector3) {
+        const farmMesh = getLoadedMesh(addGltf('farm'));
         super(farmMesh.clone(), position);
-
-        if (!farmMeshLoaded) {
-            loadMesh('/farm.gltf').then((mesh) => {
-                farmMeshLoaded = true;
-                farmMesh = mesh;
-                this.changeMesh(mesh);
-            });
-        }
 
         this.income = [[ResourceTypes.FOOD, 1]];
     }

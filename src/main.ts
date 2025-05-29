@@ -74,6 +74,14 @@ loadingResources.push(
     })
 );
 
+await Promise.all(loadingResources)
+    .then(() => {
+        console.log(`finished loading all resources`);
+    })
+    .catch((reason) => {
+        console.error(`a resource failed to load: ${reason}`);
+    });
+
 const scene = engine.createScene();
 engine.setActiveScene(scene);
 
@@ -226,16 +234,9 @@ function gameLoop(now: number) {
 
 // Wait to start the game loop after all primary resources are loaded
 const startGame = () => {
-    console.log(
-        `finished loading, starting game`,
-        performance.measure('game load', start.name)
-    );
+    console.log(`starting game`, performance.measure('game load', start.name));
     loadingContainer.style.display = 'none';
     gameLoop(lastTimeStamp);
 };
 
-Promise.all(loadingResources)
-    .finally(startGame)
-    .catch((reason) => {
-        console.error(`a resource failed to load: ${reason}`);
-    });
+startGame();
